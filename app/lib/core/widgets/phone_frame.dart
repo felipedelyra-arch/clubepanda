@@ -84,18 +84,18 @@ class PhoneFrame extends StatelessWidget {
                       child: Stack(
                         children: [
                           Positioned.fill(child: conteudo),
-                          // Notch (ilha).
+                          // Dynamic Island (pílula fina).
                           Positioned(
-                            top: 10,
+                            top: 12,
                             left: 0,
                             right: 0,
                             child: Center(
                               child: Container(
-                                width: 120,
-                                height: 30,
+                                width: 92,
+                                height: 24,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1A1A),
-                                  borderRadius: BorderRadius.circular(18),
+                                  color: const Color(0xFF000000),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
                             ),
