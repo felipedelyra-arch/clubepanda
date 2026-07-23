@@ -33,14 +33,30 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
-
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
-  -->
+  <style>
+    #panda-splash{position:fixed;inset:0;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:20px;background:#F47A20;z-index:9999;
+      transition:opacity .4s ease}
+    #panda-splash img{width:120px;height:120px;border-radius:50%;
+      box-shadow:0 8px 30px rgba(0,0,0,.25)}
+    #panda-splash .t{color:#fff;font-family:sans-serif;font-weight:700;font-size:20px}
+    #panda-splash .s{width:34px;height:34px;border:3px solid rgba(255,255,255,.4);
+      border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+  <div id="panda-splash">
+    <img src="assets/assets/logo/panda_logo.png" alt="Clube Panda"
+         onerror="this.style.display='none'"/>
+    <div class="t">Clube Panda</div>
+    <div class="s"></div>
+  </div>
+  <script>
+    // Some o splash quando o Flutter renderiza o primeiro frame.
+    window.addEventListener('flutter-first-frame', function () {
+      var s = document.getElementById('panda-splash');
+      if (s) { s.style.opacity = '0'; setTimeout(function(){ s.remove(); }, 400); }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
