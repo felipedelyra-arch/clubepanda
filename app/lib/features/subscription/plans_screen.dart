@@ -35,11 +35,11 @@ class PlansScreen extends ConsumerWidget {
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                     children: [
                       const DemoToggle(),
-                      Text('Planos',
+                      Text('Seja sócio',
                           style: Theme.of(context).textTheme.headlineMedium),
                       const SizedBox(height: 6),
                       const Text(
-                        'Vantagens de sócio no seu japa favorito. Cancele quando quiser.',
+                        'Um valor que cabe no bolso — menos que um cafezinho por mês. Cancele quando quiser.',
                         style: TextStyle(
                             color: PandaColors.cinzaTexto, fontSize: 15, height: 1.4),
                       ),
@@ -129,7 +129,7 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
                 color: PandaColors.laranja,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('MAIS ESCOLHIDO',
+              child: const Text('PLANO ÚNICO',
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 10.5,
@@ -153,6 +153,11 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
                   style: const TextStyle(color: PandaColors.cinzaTexto)),
             ],
           ),
+          const SizedBox(height: 4),
+          Text('Menos de R\$ 0,17 por dia',
+              style: TextStyle(
+                  color: PandaColors.cinzaTexto.withValues(alpha: 0.9),
+                  fontSize: 13)),
           const SizedBox(height: 18),
           for (final b in p.beneficios)
             Padding(

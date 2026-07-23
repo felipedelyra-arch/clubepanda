@@ -34,6 +34,7 @@ final _demoPromotions = [
     descricao: 'Compre 1 temaki e leve 2 na sexta-feira.',
     ativa: true,
     apenasAssinantes: false,
+    imagem: 'assets/images/nigiri_maracuja.jpg',
   ),
   Promotion(
     id: 'promo3',
@@ -41,7 +42,120 @@ final _demoPromotions = [
     descricao: '40 peças + 2 refrigerantes por um preço especial.',
     ativa: true,
     apenasAssinantes: false,
+    imagem: 'assets/images/combinado.jpg',
   ),
+];
+
+/// Destaques do cardápio (fotos reais) — vitrine na Home.
+final demoDestaques = <DishHighlight>[
+  DishHighlight(
+      nome: 'Combinado especial',
+      preco: 'R\$ 89,90',
+      imagem: 'assets/images/combinado_box.jpg'),
+  DishHighlight(
+      nome: 'Salmão grelhado',
+      preco: 'R\$ 54,90',
+      imagem: 'assets/images/salmao.jpg'),
+  DishHighlight(
+      nome: 'Sashimi premium',
+      preco: 'R\$ 62,00',
+      imagem: 'assets/images/sashimi.jpg'),
+  DishHighlight(
+      nome: 'Strogonoff da casa',
+      preco: 'R\$ 44,90',
+      imagem: 'assets/images/strogonoff.jpg'),
+  DishHighlight(
+      nome: 'Burguer Panda',
+      preco: 'R\$ 39,90',
+      imagem: 'assets/images/burger.jpg'),
+  DishHighlight(
+      nome: 'Filé gratinado',
+      preco: 'R\$ 58,00',
+      imagem: 'assets/images/file_gratinado.jpg'),
+];
+
+/// Prato de exemplo pra vitrine do cardápio.
+class DishHighlight {
+  const DishHighlight(
+      {required this.nome, required this.preco, required this.imagem});
+  final String nome;
+  final String preco;
+  final String imagem;
+}
+
+/// ---------- Cardápio (exemplo, com fotos) ----------
+class MenuItem {
+  const MenuItem(
+      {required this.nome,
+      required this.descricao,
+      required this.preco,
+      required this.imagem});
+  final String nome;
+  final String descricao;
+  final String preco;
+  final String imagem;
+}
+
+class MenuCategoria {
+  const MenuCategoria({required this.nome, required this.itens});
+  final String nome;
+  final List<MenuItem> itens;
+}
+
+final demoCardapio = <MenuCategoria>[
+  MenuCategoria(nome: 'Combinados & Sushi', itens: const [
+    MenuItem(
+        nome: 'Combinado especial',
+        descricao: '20 peças variadas: sashimi, uramaki e niguiri.',
+        preco: 'R\$ 89,90',
+        imagem: 'assets/images/combinado_box.jpg'),
+    MenuItem(
+        nome: 'Combinado do chef',
+        descricao: 'Seleção do dia feita pelo sushiman.',
+        preco: 'R\$ 99,90',
+        imagem: 'assets/images/combinado_chef.jpg'),
+    MenuItem(
+        nome: 'Sashimi premium',
+        descricao: 'Fatias generosas de salmão fresco.',
+        preco: 'R\$ 62,00',
+        imagem: 'assets/images/sashimi.jpg'),
+    MenuItem(
+        nome: 'Niguiri de maracujá',
+        descricao: 'Salmão maçaricado com toque de maracujá.',
+        preco: 'R\$ 34,90',
+        imagem: 'assets/images/nigiri_maracuja.jpg'),
+  ]),
+  MenuCategoria(nome: 'Salmão', itens: const [
+    MenuItem(
+        nome: 'Salmão grelhado',
+        descricao: 'Ao molho da casa, acompanha arroz.',
+        preco: 'R\$ 54,90',
+        imagem: 'assets/images/salmao.jpg'),
+    MenuItem(
+        nome: 'Salmão no purê',
+        descricao: 'Filé grelhado sobre purê rústico e cogumelos.',
+        preco: 'R\$ 58,90',
+        imagem: 'assets/images/salmao_pure.jpg'),
+  ]),
+  MenuCategoria(nome: 'Pratos quentes', itens: const [
+    MenuItem(
+        nome: 'Strogonoff da casa',
+        descricao: 'Carne, arroz e batata palha.',
+        preco: 'R\$ 44,90',
+        imagem: 'assets/images/strogonoff.jpg'),
+    MenuItem(
+        nome: 'Filé gratinado',
+        descricao: 'Filé com queijo gratinado, fritas e refil.',
+        preco: 'R\$ 58,00',
+        imagem: 'assets/images/file_gratinado.jpg'),
+  ]),
+  MenuCategoria(nome: 'Lanches', itens: const [
+    MenuItem(
+        nome: 'Burguer Panda',
+        descricao: 'Pão crocante, queijo derretido e fritas.',
+        preco: 'R\$ 39,90',
+        imagem: 'assets/images/burger.jpg'),
+  ]),
 ];
 
 final _demoRewards = [
@@ -83,28 +197,20 @@ final _demoRewards = [
   ),
 ];
 
+// Plano único, baratinho — cabe no bolso de todo mundo.
 final _demoPlans = [
   Plan(
     id: 'p_mensal',
-    nome: 'Mensal',
-    preco: 49.9,
-    intervalo: 'mensal',
-    beneficios: ['Promoções exclusivas', 'Acúmulo de pontos', '1 sobremesa grátis/mês'],
-  ),
-  Plan(
-    id: 'p_trimestral',
-    nome: 'Trimestral',
-    preco: 129.9,
-    intervalo: 'trimestral',
-    beneficios: ['Tudo do Mensal', 'Rodízio grátis no aniversário', 'Prioridade no delivery'],
+    nome: 'Clube Panda',
+    preco: 4.90,
+    intervalo: 'mês',
+    beneficios: [
+      'Descontos e promoções exclusivas todo mês',
+      'Junte pontos e troque por comida',
+      'Sobremesa grátis no seu aniversário',
+      'Sem fidelidade — cancele quando quiser',
+    ],
     recomendado: true,
-  ),
-  Plan(
-    id: 'p_anual',
-    nome: 'Anual',
-    preco: 499.0,
-    intervalo: 'anual',
-    beneficios: ['Tudo do Trimestral', '2 rodízios grátis', 'Brinde de boas-vindas'],
   ),
 ];
 
@@ -144,7 +250,7 @@ final demoOverrides = [
           ? Subscription(
               id: 's_demo',
               userId: 'u_demo',
-              planId: 'p_trimestral',
+              planId: 'p_mensal',
               status: 'active',
               proximaCobranca: DateTime.now().add(const Duration(days: 22)),
               formaPagamento: 'cartao',

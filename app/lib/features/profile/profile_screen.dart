@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
+import '../../core/ui_prefs.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/models/models.dart';
@@ -35,6 +36,10 @@ class ProfileScreen extends ConsumerWidget {
                   cupons: cupons.length,
                   socio: isSub,
                 ),
+                const SizedBox(height: 28),
+                const SectionLabel('Acessibilidade'),
+                const SizedBox(height: 12),
+                const _TamanhoLetra(),
                 const SizedBox(height: 32),
                 const SectionLabel('Meus cupons'),
                 const SizedBox(height: 12),
@@ -102,6 +107,110 @@ class ProfileScreen extends ConsumerWidget {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// Controle de tamanho da letra (A− / A+) — acessibilidade pra todas as idades.
+class _TamanhoLetra extends ConsumerWidget {
+  const _TamanhoLetra();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scale = ref.watch(textScaleProvider);
+
+    void ajustar(double delta) {
+      final novo = (scale + delta).clamp(kMinTextScale, kMaxTextScale);
+      ref.read(textScaleProvider.notifier).state =
+          double.parse(novo.toStringAsFixed(2));
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? PandaColors.cardDark : PandaColors.branco,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: PandaColors.laranjaSuave,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: const Icon(Icons.text_fields_rounded,
+                size: 20, color: PandaColors.laranja),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Tamanho da letra',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                const SizedBox(height: 2),
+                Text(rotuloTamanho(scale),
+                    style: const TextStyle(
+                        color: PandaColors.cinzaTexto, fontSize: 13)),
+              ],
+            ),
+          ),
+          _AjusteBtn(
+            texto: 'A',
+            fontSize: 14,
+            ativo: scale > kMinTextScale,
+            onTap: () => ajustar(-kStepTextScale),
+          ),
+          const SizedBox(width: 10),
+          _AjusteBtn(
+            texto: 'A',
+            fontSize: 20,
+            ativo: scale < kMaxTextScale,
+            onTap: () => ajustar(kStepTextScale),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AjusteBtn extends StatelessWidget {
+  const _AjusteBtn(
+      {required this.texto,
+      required this.fontSize,
+      required this.ativo,
+      required this.onTap});
+  final String texto;
+  final double fontSize;
+  final bool ativo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: ativo ? PandaColors.laranja : PandaColors.laranja.withValues(alpha: 0.3),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: ativo ? onTap : null,
+        borderRadius: BorderRadius.circular(12),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: Text(texto,
+                textScaler: TextScaler.noScaling,
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w800)),
+          ),
         ),
       ),
     );

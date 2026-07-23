@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/push_service.dart';
 import 'core/demo.dart';
+import 'core/ui_prefs.dart';
 import 'core/widgets/phone_frame.dart';
 import 'router/app_router.dart';
 
@@ -38,6 +39,7 @@ class ClubePandaApp extends ConsumerWidget {
       ref.watch(pushServiceProvider); // liga o FCM ao logar
     }
     final router = ref.watch(routerProvider);
+    final textScale = ref.watch(textScaleProvider);
     return MaterialApp.router(
       title: 'Clube Panda',
       debugShowCheckedModeBanner: false,
@@ -45,7 +47,14 @@ class ClubePandaApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
       routerConfig: router,
-      builder: (context, child) => PhoneFrame(child: child ?? const SizedBox()),
+      builder: (context, child) {
+        // Acessibilidade: aplica o tamanho de letra escolhido em todo o app.
+        final mq = MediaQuery.of(context);
+        return MediaQuery(
+          data: mq.copyWith(textScaler: TextScaler.linear(textScale)),
+          child: PhoneFrame(child: child ?? const SizedBox()),
+        );
+      },
     );
   }
 }

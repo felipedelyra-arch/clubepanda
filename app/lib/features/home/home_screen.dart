@@ -1,12 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
+import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/panda_logo.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/models/models.dart';
+
+// Contato do restaurante. TODO: trocar pelos dados reais do Tio Panda.
+const String _kTelefone = '551430000000'; // fixo, formato tel:
+const String _kWhatsapp = '5514990000000'; // com DDI 55 + DDD
+const String _kEndereco = 'Tio Panda restaurante';
+
+Future<void> _abrirUrl(String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
 
 /// Renderiza imagem de asset local ou de URL (Firestore), com fallback.
 Widget _imagemPromo(String path, {BoxFit fit = BoxFit.cover, Widget? erro}) {
@@ -62,7 +76,13 @@ class HomeScreen extends ConsumerWidget {
                 const _AssineBanner(),
                 const SizedBox(height: 28),
               ],
+              const _CarteirinhaCard(),
+              const SizedBox(height: 16),
               _AtalhosRow(),
+              const SizedBox(height: 32),
+              const SectionLabel('Destaques do cardápio'),
+              const SizedBox(height: 16),
+              const _DestaquesRow(),
               const SizedBox(height: 32),
               const SectionLabel('Promoções'),
               const SizedBox(height: 16),
@@ -93,6 +113,162 @@ class HomeScreen extends ConsumerWidget {
                   );
                 },
               ),
+              const SizedBox(height: 34),
+              const SectionLabel('Como funciona'),
+              const SizedBox(height: 16),
+              const _ComoFunciona(),
+              const SizedBox(height: 34),
+              const SectionLabel('Fale com a gente'),
+              const SizedBox(height: 16),
+              const _FaleConosco(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Passo a passo simples — pra quem tem pouca prática com app.
+class _ComoFunciona extends StatelessWidget {
+  const _ComoFunciona();
+
+  @override
+  Widget build(BuildContext context) {
+    const passos = [
+      (Icons.qr_code_2_rounded, 'Mostre o app', 'Ao pagar, mostre seu app no caixa.'),
+      (Icons.star_rounded, 'Junte pontos', 'Cada visita soma pontos na sua conta.'),
+      (Icons.card_giftcard_rounded, 'Troque por prêmios', 'Use os pontos em comidas e brindes.'),
+    ];
+    return Column(
+      children: [
+        for (var i = 0; i < passos.length; i++) ...[
+          _PassoLinha(
+            numero: i + 1,
+            icone: passos[i].$1,
+            titulo: passos[i].$2,
+            texto: passos[i].$3,
+          ),
+          if (i < passos.length - 1) const SizedBox(height: 14),
+        ],
+      ],
+    );
+  }
+}
+
+class _PassoLinha extends StatelessWidget {
+  const _PassoLinha(
+      {required this.numero,
+      required this.icone,
+      required this.titulo,
+      required this.texto});
+  final int numero;
+  final IconData icone;
+  final String titulo;
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: PandaColors.laranjaSuave,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icone, color: PandaColors.laranja, size: 24),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$numero. $titulo',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15.5)),
+              const SizedBox(height: 2),
+              Text(texto,
+                  style: const TextStyle(
+                      color: PandaColors.cinzaTexto, fontSize: 13.5, height: 1.3)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Botões grandes de contato — fáceis pra qualquer idade.
+class _FaleConosco extends StatelessWidget {
+  const _FaleConosco();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ContatoBtn(
+            icone: Icons.phone_rounded,
+            label: 'Ligar',
+            onTap: () => _abrirUrl('tel:$_kTelefone'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _ContatoBtn(
+            icone: Icons.chat_rounded,
+            label: 'WhatsApp',
+            onTap: () => _abrirUrl('https://wa.me/$_kWhatsapp'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _ContatoBtn(
+            icone: Icons.location_on_rounded,
+            label: 'Como chegar',
+            onTap: () => _abrirUrl(
+                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(_kEndereco)}'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ContatoBtn extends StatelessWidget {
+  const _ContatoBtn(
+      {required this.icone, required this.label, required this.onTap});
+  final IconData icone;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? PandaColors.cardDark : PandaColors.branco,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+                color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          child: Column(
+            children: [
+              Icon(icone, color: PandaColors.laranja, size: 26),
+              const SizedBox(height: 8),
+              Text(label,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -129,6 +305,72 @@ class _StatusSocio extends StatelessWidget {
   }
 }
 
+/// Cartão de acesso rápido à carteirinha digital (mostrar no caixa).
+class _CarteirinhaCard extends StatelessWidget {
+  const _CarteirinhaCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: () => context.go('/carteirinha'),
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [PandaColors.laranja, PandaColors.laranjaEscuro],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: PandaColors.laranja.withValues(alpha: 0.35),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.qr_code_2_rounded,
+                    color: Colors.white, size: 30),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Minha carteirinha',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16.5,
+                            fontWeight: FontWeight.w800)),
+                    SizedBox(height: 2),
+                    Text('Mostre no caixa e junte pontos',
+                        style: TextStyle(color: Colors.white, fontSize: 13)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Linha de atalhos rápidos.
 class _AtalhosRow extends StatelessWidget {
   @override
@@ -150,11 +392,7 @@ class _AtalhosRow extends StatelessWidget {
         _Atalho(
           icone: Icons.restaurant_menu_outlined,
           label: 'Cardápio',
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Cardápio em breve 🍣')),
-            );
-          },
+          onTap: () => context.go('/cardapio'),
         ),
       ],
     );
@@ -196,6 +434,66 @@ class _Atalho extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Vitrine horizontal de pratos (fotos reais) — só no modo demo.
+class _DestaquesRow extends StatelessWidget {
+  const _DestaquesRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 200,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: demoDestaques.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
+        itemBuilder: (_, i) => _DestaqueCard(prato: demoDestaques[i]),
+      ),
+    );
+  }
+}
+
+class _DestaqueCard extends StatelessWidget {
+  const _DestaqueCard({required this.prato});
+  final DishHighlight prato;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SizedBox(
+      width: 158,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              height: 132,
+              width: double.infinity,
+              child: _imagemPromo(prato.imagem,
+                  erro: Container(color: PandaColors.laranjaSuave)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(prato.nome,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 14.5)),
+          const SizedBox(height: 2),
+          Text(prato.preco,
+              style: TextStyle(
+                  color: isDark
+                      ? PandaColors.laranja
+                      : PandaColors.laranjaEscuro,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5)),
+        ],
       ),
     );
   }

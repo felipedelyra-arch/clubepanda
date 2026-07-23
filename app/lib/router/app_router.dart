@@ -11,6 +11,8 @@ import '../features/home/home_screen.dart';
 import '../features/rewards/rewards_screen.dart';
 import '../features/subscription/plans_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/wallet/carteirinha_screen.dart';
+import '../features/menu/menu_screen.dart';
 
 /// Router com guarda de autenticação. Sem sessão => manda pra /login.
 final routerProvider = Provider<GoRouter>((ref) {
@@ -32,6 +34,11 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
+      // Telas em foco (sem bottom nav), com botão de voltar.
+      GoRoute(
+          path: '/carteirinha',
+          builder: (_, _) => const CarteirinhaScreen()),
+      GoRoute(path: '/cardapio', builder: (_, _) => const MenuScreen()),
       ShellRoute(
         builder: (_, _, child) => MainShell(child: child),
         routes: [
