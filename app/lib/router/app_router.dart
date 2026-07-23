@@ -17,7 +17,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: '/home',
+    initialLocation: kDemo ? '/login' : '/home',
     refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
       if (kDemo) return null; // demo: sem guarda, navega livre

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/services/services.dart';
+import '../../core/demo.dart';
 import '../../core/widgets/panda_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -29,6 +30,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _entrar() async {
     if (!_formKey.currentState!.validate()) return;
+    // Demo: simula login e entra direto.
+    if (kDemo) {
+      context.go('/home');
+      return;
+    }
     setState(() {
       _loading = true;
       _erro = null;
@@ -88,9 +94,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 24),
-                  const Center(child: PandaLogo(size: 72)),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 12),
+                  const Center(child: PandaLogo(size: 150)),
+                  const SizedBox(height: 32),
                   Text('Bem-vindo de volta 🐼',
                       style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 8),

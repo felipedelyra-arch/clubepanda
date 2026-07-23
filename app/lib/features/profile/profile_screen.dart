@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
@@ -94,9 +95,7 @@ class ProfileScreen extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: () {
                   if (kDemo) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Sair desativado no modo demo 🐼')),
-                    );
+                    context.go('/login');
                     return;
                   }
                   ref.read(firebaseAuthProvider).signOut();
