@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/services/services.dart';
+import '../core/demo.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/signup_screen.dart';
 import '../features/shell/main_shell.dart';
@@ -19,6 +20,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/home',
     refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
+      if (kDemo) return null; // demo: sem guarda, navega livre
       final loggingIn =
           state.matchedLocation == '/login' || state.matchedLocation == '/signup';
       final signedIn = authState.value != null;

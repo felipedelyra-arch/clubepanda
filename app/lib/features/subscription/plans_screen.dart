@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
+import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/models/models.dart';
@@ -64,6 +65,12 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
   bool _loading = false;
 
   Future<void> _assinar() async {
+    if (kDemo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Checkout desativado no modo demo 🐼')),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       final callable =
@@ -236,6 +243,14 @@ class _AssinaturaAtiva extends ConsumerWidget {
       ),
     );
     if (ok != true) return;
+    if (kDemo) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cancelamento desativado no modo demo 🐼')),
+        );
+      }
+      return;
+    }
     try {
       await ref
           .read(functionsProvider)

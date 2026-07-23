@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/services/services.dart';
+import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/models/models.dart';
@@ -173,6 +174,17 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
       _loading = true;
       _erro = null;
     });
+    // Demo: simula resgate com código fake (não chama backend).
+    if (kDemo) {
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      if (mounted) {
+        setState(() {
+          _codigo = 'DEMO${DateTime.now().millisecondsSinceEpoch % 100000000}';
+          _loading = false;
+        });
+      }
+      return;
+    }
     try {
       final callable =
           ref.read(functionsProvider).httpsCallable('redeemReward');

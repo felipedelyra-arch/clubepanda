@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/services.dart';
+import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/models/models.dart';
@@ -91,7 +92,15 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () => ref.read(firebaseAuthProvider).signOut(),
+                onPressed: () {
+                  if (kDemo) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Sair desativado no modo demo 🐼')),
+                    );
+                    return;
+                  }
+                  ref.read(firebaseAuthProvider).signOut();
+                },
                 icon: const Icon(Icons.logout),
                 label: const Text('Sair'),
                 style: OutlinedButton.styleFrom(
