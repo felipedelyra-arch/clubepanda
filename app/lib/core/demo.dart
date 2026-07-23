@@ -26,6 +26,7 @@ final _demoPromotions = [
     descricao: 'Toda quarta, rodízio completo com desconto pra assinantes.',
     ativa: true,
     apenasAssinantes: true,
+    imagem: 'assets/images/hero.jpg',
   ),
   Promotion(
     id: 'promo2',

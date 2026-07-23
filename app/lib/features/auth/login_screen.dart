@@ -86,33 +86,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetColor = isDark ? PandaColors.fundoDark : PandaColors.branco;
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 20),
-                  const Center(child: PandaLogo(size: 132, showWordmark: false)),
-                  const SizedBox(height: 28),
-                  Center(
-                    child: Text('Clube Panda',
-                        style: Theme.of(context).textTheme.headlineMedium),
-                  ),
-                  const SizedBox(height: 6),
-                  const Center(
-                    child: Text(
-                      'Seu japa favorito, com vantagens de sócio.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: PandaColors.cinzaTexto, fontSize: 15),
+      body: Column(
+        children: [
+          // Cabeçalho com foto do restaurante + logo por cima.
+          SizedBox(
+            height: 300,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset('assets/images/login_bg.jpg',
+                    fit: BoxFit.cover, alignment: Alignment.center,
+                    errorBuilder: (_, _, _) =>
+                        Container(color: PandaColors.laranja)),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.35),
+                        Colors.black.withValues(alpha: 0.15),
+                        sheetColor,
+                      ],
+                      stops: const [0, 0.5, 1],
                     ),
                   ),
-                  const SizedBox(height: 36),
-                  const _Campo(label: 'E-mail'),
+                ),
+                SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const PandaLogo(size: 96, showWordmark: false),
+                        const SizedBox(height: 14),
+                        Text('Clube Panda',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(color: Colors.white)),
+                        const SizedBox(height: 4),
+                        Text('Seu japa favorito, com vantagens de sócio.',
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Formulário no "sheet" de baixo.
+          Expanded(
+            child: Container(
+              color: sheetColor,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _Campo(label: 'E-mail'),
                   TextFormField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
@@ -182,6 +222,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
+        ),
+        ],
       ),
     );
   }

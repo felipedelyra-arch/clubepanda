@@ -8,6 +8,16 @@ import '../../core/widgets/panda_logo.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/models/models.dart';
 
+/// Renderiza imagem de asset local ou de URL (Firestore), com fallback.
+Widget _imagemPromo(String path, {BoxFit fit = BoxFit.cover, Widget? erro}) {
+  final fallback = erro ?? const SizedBox.shrink();
+  if (path.startsWith('assets/')) {
+    return Image.asset(path, fit: fit,
+        errorBuilder: (_, _, _) => fallback);
+  }
+  return Image.network(path, fit: fit, errorBuilder: (_, _, _) => fallback);
+}
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -256,10 +266,8 @@ class _PromoHero extends StatelessWidget {
           SizedBox(
             height: 210,
             width: double.infinity,
-            child: Image.network(promo.imagem!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    Container(color: PandaColors.laranjaSuave)),
+            child: _imagemPromo(promo.imagem!,
+                erro: Container(color: PandaColors.laranjaSuave)),
           ),
           Positioned.fill(
             child: DecoratedBox(
@@ -376,9 +384,8 @@ class _PromoCard extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: promo.imagem != null
-                ? Image.network(promo.imagem!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(Icons.local_offer,
+                ? _imagemPromo(promo.imagem!,
+                    erro: const Icon(Icons.local_offer,
                         color: PandaColors.laranja))
                 : const Icon(Icons.local_offer, color: PandaColors.laranja),
           ),
