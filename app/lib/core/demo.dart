@@ -52,6 +52,7 @@ final _demoRewards = [
     tipo: 'rodizio',
     custoPontos: 500,
     estoque: 10,
+    imagem: 'assets/images/reward_rodizio.jpg',
   ),
   Reward(
     id: 'rw2',
@@ -60,6 +61,7 @@ final _demoRewards = [
     tipo: 'prato',
     custoPontos: 250,
     estoque: 20,
+    imagem: 'assets/images/reward_sushi.jpg',
   ),
   Reward(
     id: 'rw3',
@@ -71,12 +73,13 @@ final _demoRewards = [
   ),
   Reward(
     id: 'rw4',
-    titulo: 'Saquê de boas-vindas',
-    descricao: 'Exclusivo pra assinantes.',
+    titulo: 'Combo delivery grátis',
+    descricao: 'Uma entrega por nossa conta. #PandaLovers',
     tipo: 'cupom',
     custoPontos: 0,
     estoque: 50,
     apenasAssinantes: true,
+    imagem: 'assets/images/reward_delivery.jpg',
   ),
 ];
 

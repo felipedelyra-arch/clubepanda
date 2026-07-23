@@ -7,6 +7,7 @@ import '../../core/services/services.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/state_views.dart';
+import '../../core/widgets/app_image.dart';
 import '../../core/models/models.dart';
 
 IconData _iconeTipo(String tipo) {
@@ -188,14 +189,19 @@ class _RewardTile extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 60,
+                  height: 60,
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: PandaColors.laranjaSuave,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(_iconeTipo(reward.tipo),
-                      color: PandaColors.laranja, size: 26),
+                  child: reward.imagem != null
+                      ? appImage(reward.imagem!,
+                          erro: Icon(_iconeTipo(reward.tipo),
+                              color: PandaColors.laranja, size: 26))
+                      : Icon(_iconeTipo(reward.tipo),
+                          color: PandaColors.laranja, size: 26),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -352,18 +358,35 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
               child: const Text('Fechar'),
             ),
           ] else ...[
-            const SizedBox(height: 8),
+            if (r.imagem != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: SizedBox(
+                  height: 170,
+                  width: double.infinity,
+                  child: appImage(r.imagem!,
+                      erro: Container(color: PandaColors.laranjaSuave)),
+                ),
+              ),
+              const SizedBox(height: 18),
+            ] else
+              const SizedBox(height: 8),
             Row(
               children: [
                 Container(
                   width: 52,
                   height: 52,
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: PandaColors.laranjaSuave,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(_iconeTipo(r.tipo),
-                      color: PandaColors.laranja, size: 26),
+                  child: r.imagem != null
+                      ? appImage(r.imagem!,
+                          erro: Icon(_iconeTipo(r.tipo),
+                              color: PandaColors.laranja, size: 26))
+                      : Icon(_iconeTipo(r.tipo),
+                          color: PandaColors.laranja, size: 26),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
