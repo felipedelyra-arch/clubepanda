@@ -17,8 +17,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController();
-  final _senha = TextEditingController();
+  // No modo demo já vem preenchido com uma conta de teste.
+  final _email = TextEditingController(text: kDemo ? 'cliente@teste.com' : '');
+  final _senha = TextEditingController(text: kDemo ? '123456' : '');
   bool _loading = false;
   String? _erro;
 
@@ -161,6 +162,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: () => context.go('/signup'),
                     child: const Text('Não tem conta? Cadastre-se'),
                   ),
+                  if (kDemo) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: PandaColors.laranjaSuave,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Modo demonstração — use qualquer e-mail e senha (6+ caracteres) e toque em Entrar.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.4,
+                            color: PandaColors.laranjaEscuro),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
