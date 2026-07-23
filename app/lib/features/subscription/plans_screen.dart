@@ -8,7 +8,6 @@ import '../../core/services/services.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/state_views.dart';
-import '../../core/widgets/demo_toggle.dart';
 import '../../core/models/models.dart';
 
 final _moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
@@ -34,7 +33,6 @@ class PlansScreen extends ConsumerWidget {
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                     children: [
-                      const DemoToggle(),
                       Text('Seja sócio',
                           style: Theme.of(context).textTheme.headlineMedium),
                       const SizedBox(height: 6),
@@ -219,7 +217,6 @@ class _AssinaturaAtiva extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       children: [
-        const DemoToggle(),
         Text('Sua assinatura',
             style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 20),
