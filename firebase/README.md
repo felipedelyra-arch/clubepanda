@@ -70,6 +70,31 @@ npm --prefix functions run build
 firebase emulators:start
 ```
 
+## Hosting do Painel Admin
+
+O `firebase.json` já tem a seção `hosting` configurada: serve `admin/dist`,
+faz build automático no deploy (`predeploy`) e trata SPA (rewrite `** -> /index.html`).
+
+**Pré-requisito (o sócio faz quando tiver o projeto):**
+
+1. Preencher `admin/.env` com as chaves do app Web do Firebase.
+2. Preencher `functions/.env` com Stripe/Pix.
+3. Logar e selecionar o projeto:
+
+```bash
+firebase login
+firebase use --add          # escolhe o projeto real
+
+# deploy do painel (roda npm install + build do admin sozinho)
+firebase deploy --only hosting
+
+# ou tudo de uma vez
+firebase deploy --only hosting,functions,firestore:rules,firestore:indexes,storage
+```
+
+O painel fica em `https://<projeto>.web.app`. Sem as chaves e o `firebase use`,
+o deploy não roda — é só isso que falta.
+
 ## Segurança
 
 - Escrita de `subscriptions`, `payments`, `redemptions` bloqueada nas rules — só backend.
