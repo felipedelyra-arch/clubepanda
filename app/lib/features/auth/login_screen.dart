@@ -32,7 +32,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _entrar() async {
     if (!_formKey.currentState!.validate()) return;
-    // Demo: simula login e entra direto.
     if (kDemo) {
       context.go('/home');
       return;
@@ -46,7 +45,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             email: _email.text.trim(),
             password: _senha.text,
           );
-      // redirect do router leva pra /home
     } on FirebaseAuthException catch (e) {
       setState(() => _erro = _mensagemErro(e.code));
     } finally {
@@ -87,19 +85,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sheetColor = isDark ? PandaColors.fundoDark : PandaColors.branco;
+    final sheet = isDark ? PandaColors.fundoDark : PandaColors.branco;
+    final insets = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
-      body: Column(
+      backgroundColor: sheet,
+      resizeToAvoidBottomInset: true,
+      body: Stack(
         children: [
-          // Cabeçalho com foto do restaurante + logo por cima.
+          // Foto do restaurante no topo.
           SizedBox(
-            height: 300,
+            height: 250,
             width: double.infinity,
             child: Stack(
               fit: StackFit.expand,
               children: [
                 Image.asset('assets/images/login_bg.jpg',
-                    fit: BoxFit.cover, alignment: Alignment.center,
+                    fit: BoxFit.cover,
                     errorBuilder: (_, _, _) =>
                         Container(color: PandaColors.laranja)),
                 DecoratedBox(
@@ -108,121 +110,118 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.35),
-                        Colors.black.withValues(alpha: 0.15),
-                        sheetColor,
+                        Colors.black.withValues(alpha: 0.25),
+                        Colors.transparent,
+                        sheet,
                       ],
-                      stops: const [0, 0.5, 1],
-                    ),
-                  ),
-                ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const PandaLogo(size: 96, showWordmark: false),
-                        const SizedBox(height: 14),
-                        Text('Clube Panda',
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineMedium
-                                ?.copyWith(color: Colors.white)),
-                        const SizedBox(height: 4),
-                        Text('Seu japa favorito, com vantagens de sócio.',
-                            style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 14)),
-                      ],
+                      stops: const [0, 0.55, 1],
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          // Formulário no "sheet" de baixo.
-          Expanded(
+          // Painel de login, sobreposto à foto com cantos arredondados.
+          Positioned(
+            top: 216,
+            left: 0,
+            right: 0,
+            bottom: 0,
             child: Container(
-              color: sheetColor,
+              decoration: BoxDecoration(
+                color: sheet,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(34)),
+              ),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+                padding: EdgeInsets.fromLTRB(28, 0, 28, insets + 32),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const SizedBox(height: 26),
+                      const Center(child: PandaLogo(size: 104)),
+                      const SizedBox(height: 22),
+                      Center(
+                        child: Text('Que bom te ver!',
+                            style: Theme.of(context).textTheme.headlineMedium),
+                      ),
+                      const SizedBox(height: 8),
+                      const Center(
+                        child: Text(
+                          'Entre e aproveite suas vantagens de sócio.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: PandaColors.cinzaTexto, fontSize: 15),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
                       const _Campo(label: 'E-mail'),
-                  TextFormField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(hintText: 'voce@email.com'),
-                    validator: (v) =>
-                        (v == null || !v.contains('@')) ? 'E-mail inválido' : null,
-                  ),
-                  const SizedBox(height: 18),
-                  const _Campo(label: 'Senha'),
-                  TextFormField(
-                    controller: _senha,
-                    obscureText: true,
-                    decoration:
-                        const InputDecoration(hintText: 'Sua senha'),
-                    validator: (v) =>
-                        (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _recuperarSenha,
-                      child: const Text('Esqueci a senha'),
-                    ),
-                  ),
-                  if (_erro != null) ...[
-                    const SizedBox(height: 8),
-                    Text(_erro!,
-                        style: const TextStyle(color: Color(0xFFE23B2E))),
-                  ],
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _loading ? null : _entrar,
-                    child: _loading
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Entrar'),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(
-                    onPressed: () => context.go('/signup'),
-                    child: const Text('Não tem conta? Cadastre-se'),
-                  ),
-                  if (kDemo) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: PandaColors.laranjaSuave,
-                        borderRadius: BorderRadius.circular(12),
+                      TextFormField(
+                        controller: _email,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration:
+                            const InputDecoration(hintText: 'voce@email.com'),
+                        validator: (v) => (v == null || !v.contains('@'))
+                            ? 'E-mail inválido'
+                            : null,
                       ),
-                      child: const Text(
-                        'Modo demonstração — use qualquer e-mail e senha (6+ caracteres) e toque em Entrar.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: 12.5,
-                            height: 1.4,
-                            color: PandaColors.laranjaEscuro),
+                      const SizedBox(height: 22),
+                      const _Campo(label: 'Senha'),
+                      TextFormField(
+                        controller: _senha,
+                        obscureText: true,
+                        decoration:
+                            const InputDecoration(hintText: 'Sua senha'),
+                        validator: (v) => (v == null || v.length < 6)
+                            ? 'Mínimo 6 caracteres'
+                            : null,
                       ),
-                    ),
-                  ],
-                ],
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _recuperarSenha,
+                          child: const Text('Esqueci a senha'),
+                        ),
+                      ),
+                      if (_erro != null) ...[
+                        const SizedBox(height: 6),
+                        Text(_erro!,
+                            style: const TextStyle(
+                                color: PandaColors.vermelhoAcento)),
+                      ],
+                      const SizedBox(height: 22),
+                      ElevatedButton(
+                        onPressed: _loading ? null : _entrar,
+                        child: _loading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Entrar'),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Não tem conta?',
+                              style: TextStyle(color: PandaColors.cinzaTexto)),
+                          TextButton(
+                            onPressed: () => context.go('/signup'),
+                            child: const Text('Cadastre-se'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-        ),
         ],
       ),
     );
@@ -237,7 +236,7 @@ class _Campo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 7),
+      padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(label,
           style: const TextStyle(
               fontSize: 13,
