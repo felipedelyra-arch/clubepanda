@@ -33,6 +33,18 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    // Demo: remove qualquer service worker antigo e limpa caches
+    // pra sempre carregar a versão mais recente do app.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (rs) {
+        rs.forEach(function (r) { r.unregister(); });
+      });
+    }
+    if (window.caches) {
+      caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+    }
+  </script>
   <style>
     #panda-splash{position:fixed;inset:0;display:flex;flex-direction:column;
       align-items:center;justify-content:center;gap:20px;background:#F47A20;z-index:9999;
