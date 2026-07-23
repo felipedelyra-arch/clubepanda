@@ -47,3 +47,6 @@ Thumbs.db
 
 # Functions build output
 firebase/functions/lib/
+
+# Stray root lockfile
+/package-lock.json
