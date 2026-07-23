@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
+import '../../core/theme/colors.dart';
 import '../../core/widgets/panda_logo.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -83,65 +84,77 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/login'),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Center(child: PandaLogo(size: 60)),
+                const Center(child: PandaLogo(size: 88, showWordmark: false)),
                 const SizedBox(height: 24),
-                Text('Criar conta',
-                    style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 24),
+                Center(
+                  child: Text('Criar conta',
+                      style: Theme.of(context).textTheme.headlineMedium),
+                ),
+                const SizedBox(height: 6),
+                const Center(
+                  child: Text(
+                    'Leva um minuto e já começa a valer.',
+                    style: TextStyle(color: PandaColors.cinzaTexto, fontSize: 15),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                _Campo(label: 'Nome'),
                 TextFormField(
                   controller: _nome,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Informe seu nome' : null,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(hintText: 'Como te chamam?'),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Informe seu nome'
+                      : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
+                _Campo(label: 'E-mail'),
                 TextFormField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'E-mail',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                  validator: (v) =>
-                      (v == null || !v.contains('@')) ? 'E-mail inválido' : null,
+                  decoration: const InputDecoration(hintText: 'voce@email.com'),
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'E-mail inválido'
+                      : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
+                _Campo(label: 'Telefone (WhatsApp)'),
                 TextFormField(
                   controller: _telefone,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'Telefone (WhatsApp)',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                  ),
+                  decoration: const InputDecoration(hintText: '(14) 90000-0000'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 18),
+                _Campo(label: 'Senha'),
                 TextFormField(
                   controller: _senha,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Senha',
-                    prefixIcon: Icon(Icons.lock_outline),
-                  ),
+                  decoration:
+                      const InputDecoration(hintText: 'Mínimo 6 caracteres'),
                   validator: (v) =>
                       (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
                 ),
                 if (_erro != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_erro!, style: const TextStyle(color: Color(0xFFE23B2E))),
+                  const SizedBox(height: 14),
+                  Text(_erro!,
+                      style:
+                          const TextStyle(color: PandaColors.vermelhoAcento)),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 ElevatedButton(
                   onPressed: _loading ? null : _cadastrar,
                   child: _loading
@@ -153,15 +166,36 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         )
                       : const Text('Criar conta'),
                 ),
-                TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: const Text('Já tenho conta'),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: () => context.go('/login'),
+                    child: const Text('Já tenho conta'),
+                  ),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Rótulo pequeno acima de cada campo.
+class _Campo extends StatelessWidget {
+  const _Campo({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 7),
+      child: Text(label,
+          style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: PandaColors.cinzaTexto)),
     );
   }
 }
