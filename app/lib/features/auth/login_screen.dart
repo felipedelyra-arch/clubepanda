@@ -112,24 +112,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 36),
+                  const _Campo(label: 'E-mail'),
                   TextFormField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'E-mail',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
+                    decoration: const InputDecoration(hintText: 'voce@email.com'),
                     validator: (v) =>
                         (v == null || !v.contains('@')) ? 'E-mail inválido' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
+                  const _Campo(label: 'Senha'),
                   TextFormField(
                     controller: _senha,
                     obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Senha',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
+                    decoration:
+                        const InputDecoration(hintText: 'Sua senha'),
                     validator: (v) =>
                         (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
                   ),
@@ -186,6 +183,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Rótulo pequeno acima de cada campo.
+class _Campo extends StatelessWidget {
+  const _Campo({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 7),
+      child: Text(label,
+          style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: PandaColors.cinzaTexto)),
     );
   }
 }
