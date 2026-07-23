@@ -40,7 +40,11 @@ class PhoneFrame extends StatelessWidget {
     return Container(
       color: isDark ? const Color(0xFF0A0A0A) : const Color(0xFFE8E8E8),
       alignment: Alignment.center,
-      child: Column(
+      padding: const EdgeInsets.all(16),
+      // Escala a moldura pra caber em qualquer altura de janela (sem overflow).
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
@@ -117,6 +121,7 @@ class PhoneFrame extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

@@ -13,6 +13,7 @@ class AppUser {
     this.fotoUrl,
     this.pontos = 0,
     this.role,
+    this.nascimento,
   });
 
   final String uid;
@@ -23,6 +24,7 @@ class AppUser {
   final String? fotoUrl;
   final int pontos;
   final String? role;
+  final DateTime? nascimento;
 
   bool get isAdmin => role == 'admin';
 
@@ -37,6 +39,38 @@ class AppUser {
       fotoUrl: m['fotoUrl'],
       pontos: (m['pontos'] ?? 0) as int,
       role: m['role'],
+      nascimento: (m['nascimento'] as Timestamp?)?.toDate(),
+    );
+  }
+}
+
+/// Notificação (aviso/promo) exibida na central e enviada por push.
+class AppNotification {
+  AppNotification({
+    required this.id,
+    required this.titulo,
+    required this.corpo,
+    this.tipo = 'info',
+    this.criadoEm,
+    this.lida = false,
+  });
+
+  final String id;
+  final String titulo;
+  final String corpo;
+  final String tipo; // promo | aniversario | info
+  final DateTime? criadoEm;
+  final bool lida;
+
+  factory AppNotification.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data() ?? {};
+    return AppNotification(
+      id: d.id,
+      titulo: m['titulo'] ?? '',
+      corpo: m['corpo'] ?? '',
+      tipo: m['tipo'] ?? 'info',
+      criadoEm: (m['criadoEm'] as Timestamp?)?.toDate(),
+      lida: m['lida'] ?? false,
     );
   }
 }

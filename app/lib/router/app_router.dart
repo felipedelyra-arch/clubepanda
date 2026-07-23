@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/services/services.dart';
+import '../core/app_prefs.dart';
 import '../core/demo.dart';
+import '../features/onboarding/onboarding_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/signup_screen.dart';
 import '../features/shell/main_shell.dart';
@@ -13,18 +15,35 @@ import '../features/subscription/plans_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/wallet/carteirinha_screen.dart';
 import '../features/menu/menu_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 
-/// Router com guarda de autenticação. Sem sessão => manda pra /login.
+/// Router com guarda de autenticação e de onboarding.
+/// Sem onboarding visto => manda pra /onboarding. Sem sessão => /login.
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
+  final vistoOnboardingInicial = ref.read(onboardingSeenProvider);
 
   return GoRouter(
-    initialLocation: kDemo ? '/login' : '/home',
+    initialLocation: !vistoOnboardingInicial
+        ? '/onboarding'
+        : (kDemo ? '/login' : '/home'),
     refreshListenable: _AuthListenable(ref),
     redirect: (context, state) {
-      if (kDemo) return null; // demo: sem guarda, navega livre
-      final loggingIn =
-          state.matchedLocation == '/login' || state.matchedLocation == '/signup';
+      final noOnboarding = state.matchedLocation == '/onboarding';
+      final vistoOnboarding = ref.read(onboardingSeenProvider);
+
+      // Ainda não viu o tour: força o onboarding.
+      if (!vistoOnboarding) return noOnboarding ? null : '/onboarding';
+      // Já viu, mas está na tela de onboarding: sai dela.
+      if (noOnboarding) {
+        if (kDemo) return '/login';
+        return authState.value != null ? '/home' : '/login';
+      }
+
+      if (kDemo) return null; // demo: sem guarda de auth, navega livre
+
+      final loggingIn = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/signup';
       final signedIn = authState.value != null;
 
       if (!signedIn) return loggingIn ? null : '/login';
@@ -32,6 +51,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
       // Telas em foco (sem bottom nav), com botão de voltar.
@@ -39,6 +59,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/carteirinha',
           builder: (_, _) => const CarteirinhaScreen()),
       GoRoute(path: '/cardapio', builder: (_, _) => const MenuScreen()),
+      GoRoute(
+          path: '/notificacoes',
+          builder: (_, _) => const NotificationsScreen()),
       ShellRoute(
         builder: (_, _, child) => MainShell(child: child),
         routes: [

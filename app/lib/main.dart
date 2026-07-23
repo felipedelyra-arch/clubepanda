@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/push_service.dart';
 import 'core/demo.dart';
+import 'core/app_prefs.dart';
 import 'core/ui_prefs.dart';
 import 'core/widgets/phone_frame.dart';
 import 'router/app_router.dart';
@@ -14,6 +17,9 @@ import 'router/app_router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR', null);
+
+  // Carrega as preferências antes de rodar: permite leitura síncrona.
+  final prefs = await SharedPreferences.getInstance();
 
   // Modo demo: não inicializa Firebase, usa dados fictícios (overrides).
   if (!kDemo) {
@@ -24,7 +30,10 @@ Future<void> main() async {
 
   runApp(
     ProviderScope(
-      overrides: kDemo ? demoOverrides : const [],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        ...(kDemo ? demoOverrides : const []),
+      ],
       child: const ClubePandaApp(),
     ),
   );
@@ -46,6 +55,13 @@ class ClubePandaApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
+      locale: const Locale('pt', 'BR'),
+      supportedLocales: const [Locale('pt', 'BR')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       routerConfig: router,
       builder: (context, child) {
         // Acessibilidade: aplica o tamanho de letra escolhido em todo o app.

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
@@ -22,6 +23,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _email = TextEditingController();
   final _telefone = TextEditingController();
   final _senha = TextEditingController();
+  DateTime? _nascimento;
   bool _loading = false;
   String? _erro;
 
@@ -32,6 +34,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _telefone.dispose();
     _senha.dispose();
     super.dispose();
+  }
+
+  Future<void> _escolherData() async {
+    final agora = DateTime.now();
+    final escolhida = await showDatePicker(
+      context: context,
+      initialDate: _nascimento ?? DateTime(agora.year - 25, agora.month, agora.day),
+      firstDate: DateTime(1920),
+      lastDate: agora,
+      locale: const Locale('pt', 'BR'),
+      helpText: 'Sua data de nascimento',
+    );
+    if (escolhida != null) setState(() => _nascimento = escolhida);
   }
 
   Future<void> _cadastrar() async {
@@ -58,6 +73,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         'nome': _nome.text.trim(),
         'email': _email.text.trim(),
         'telefone': _telefone.text.trim(),
+        if (_nascimento != null)
+          'nascimento': Timestamp.fromDate(_nascimento!),
         'pontos': 0,
         'criadoEm': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -137,6 +154,30 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   controller: _telefone,
                   keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(hintText: '(14) 90000-0000'),
+                ),
+                const SizedBox(height: 18),
+                _Campo(label: 'Aniversário'),
+                InkWell(
+                  onTap: _escolherData,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.cake_outlined),
+                      hintText: 'Ganhe um mimo no seu dia',
+                    ),
+                    child: Text(
+                      _nascimento == null
+                          ? 'Selecione a data'
+                          : DateFormat("d 'de' MMMM 'de' y", 'pt_BR')
+                              .format(_nascimento!),
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: _nascimento == null
+                            ? PandaColors.cinzaTexto
+                            : null,
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 18),
                 _Campo(label: 'Senha'),

@@ -75,6 +75,26 @@ final isSubscriberProvider = Provider<bool>((ref) {
   return ref.watch(subscriptionProvider).value?.ativa ?? false;
 });
 
+/// Notificações do usuário (central de avisos), mais recentes primeiro.
+final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
+  final auth = ref.watch(authStateProvider).value;
+  if (auth == null) return Stream.value(const []);
+  return ref
+      .watch(firestoreProvider)
+      .collection('users')
+      .doc(auth.uid)
+      .collection('notifications')
+      .orderBy('criadoEm', descending: true)
+      .snapshots()
+      .map((s) => s.docs.map(AppNotification.fromDoc).toList());
+});
+
+/// Quantidade de notificações não lidas (badge do sino).
+final unreadCountProvider = Provider<int>((ref) {
+  final list = ref.watch(notificationsProvider).value ?? const [];
+  return list.where((n) => !n.lida).length;
+});
+
 /// Resgates do usuário.
 final redemptionsProvider = StreamProvider<List<Redemption>>((ref) {
   final auth = ref.watch(authStateProvider).value;

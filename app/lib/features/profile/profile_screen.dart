@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
 import '../../core/ui_prefs.dart';
+import '../../core/app_prefs.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/models/models.dart';
@@ -40,6 +42,8 @@ class ProfileScreen extends ConsumerWidget {
                 const SectionLabel('Acessibilidade'),
                 const SizedBox(height: 12),
                 const _TamanhoLetra(),
+                const SizedBox(height: 12),
+                const _NotificacoesToggle(),
                 const SizedBox(height: 32),
                 const SectionLabel('Meus cupons'),
                 const SizedBox(height: 12),
@@ -75,9 +79,16 @@ class ProfileScreen extends ConsumerWidget {
                     subtitulo: u.endereco ?? 'Não informado',
                     onTap: () {}),
                 _MenuTile(
+                    icone: Icons.cake_outlined,
+                    titulo: 'Aniversário',
+                    subtitulo: u.nascimento != null
+                        ? DateFormat("d 'de' MMMM", 'pt_BR').format(u.nascimento!)
+                        : 'Não informado',
+                    onTap: () {}),
+                _MenuTile(
                     icone: Icons.notifications_none_rounded,
                     titulo: 'Notificações',
-                    onTap: () {}),
+                    onTap: () => context.go('/notificacoes')),
                 _MenuTile(
                     icone: Icons.description_outlined,
                     titulo: 'Termos e privacidade',
@@ -123,9 +134,7 @@ class _TamanhoLetra extends ConsumerWidget {
     final scale = ref.watch(textScaleProvider);
 
     void ajustar(double delta) {
-      final novo = (scale + delta).clamp(kMinTextScale, kMaxTextScale);
-      ref.read(textScaleProvider.notifier).state =
-          double.parse(novo.toStringAsFixed(2));
+      ref.read(textScaleProvider.notifier).ajustar(delta);
     }
 
     return Container(
@@ -212,6 +221,62 @@ class _AjusteBtn extends StatelessWidget {
                     fontWeight: FontWeight.w800)),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Liga/desliga notificações (push). Persistido em shared_preferences.
+class _NotificacoesToggle extends ConsumerWidget {
+  const _NotificacoesToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ativas = ref.watch(notificationsEnabledProvider);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? PandaColors.cardDark : PandaColors.branco,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: PandaColors.laranjaSuave,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: const Icon(Icons.notifications_active_rounded,
+                size: 20, color: PandaColors.laranja),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Receber notificações',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                const SizedBox(height: 2),
+                Text(ativas ? 'Promoções e avisos ligados' : 'Desligado',
+                    style: const TextStyle(
+                        color: PandaColors.cinzaTexto, fontSize: 13)),
+              ],
+            ),
+          ),
+          Switch(
+            value: ativas,
+            activeThumbColor: PandaColors.laranja,
+            onChanged: (v) =>
+                ref.read(notificationsEnabledProvider.notifier).definir(v),
+          ),
+        ],
       ),
     );
   }

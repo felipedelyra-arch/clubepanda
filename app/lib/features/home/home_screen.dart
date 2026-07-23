@@ -54,10 +54,16 @@ class HomeScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const PandaLogo(size: 40, showWordmark: false),
-                  user.when(
-                    data: (u) => PointsBadge(pontos: u?.pontos ?? 0),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, _) => const SizedBox.shrink(),
+                  Row(
+                    children: [
+                      const _SinoNotificacoes(),
+                      const SizedBox(width: 12),
+                      user.when(
+                        data: (u) => PointsBadge(pontos: u?.pontos ?? 0),
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -123,6 +129,66 @@ class HomeScreen extends ConsumerWidget {
               const _FaleConosco(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Sino de notificações com badge de não lidas — abre a central.
+class _SinoNotificacoes extends ConsumerWidget {
+  const _SinoNotificacoes();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final naoLidas = ref.watch(unreadCountProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: () => context.go('/notificacoes'),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: isDark ? PandaColors.cardDark : PandaColors.branco,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(Icons.notifications_none_rounded,
+                size: 22, color: PandaColors.laranja),
+            if (naoLidas > 0)
+              Positioned(
+                top: 8,
+                right: 9,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  constraints:
+                      const BoxConstraints(minWidth: 15, minHeight: 15),
+                  decoration: BoxDecoration(
+                    color: PandaColors.vermelhoAcento,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: isDark
+                            ? PandaColors.fundoDark
+                            : PandaColors.fundo,
+                        width: 1.5),
+                  ),
+                  child: Text(
+                    naoLidas > 9 ? '9+' : '$naoLidas',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        height: 1),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

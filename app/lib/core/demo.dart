@@ -17,7 +17,42 @@ final _demoUser = AppUser(
   email: 'ana@email.com',
   telefone: '(14) 99911-0001',
   pontos: 320,
+  nascimento: DateTime(1992, 7, 23),
 );
+
+/// Central de notificações (demo) — mais recentes primeiro.
+final _demoNotifications = [
+  AppNotification(
+    id: 'n1',
+    titulo: 'Rodízio com 20% OFF',
+    corpo: 'Toda quarta, rodízio completo com desconto pra sócios. Bora?',
+    tipo: 'promo',
+    criadoEm: DateTime.now().subtract(const Duration(hours: 2)),
+  ),
+  AppNotification(
+    id: 'n2',
+    titulo: 'Feliz aniversário, Ana! 🎂',
+    corpo: 'Sua sobremesa é por nossa conta hoje. Mostre o app no caixa.',
+    tipo: 'aniversario',
+    criadoEm: DateTime.now().subtract(const Duration(hours: 8)),
+  ),
+  AppNotification(
+    id: 'n3',
+    titulo: 'Novidade no cardápio',
+    corpo: 'Salmão no purê rústico com cogumelos já está disponível.',
+    tipo: 'info',
+    criadoEm: DateTime.now().subtract(const Duration(days: 2)),
+    lida: true,
+  ),
+  AppNotification(
+    id: 'n4',
+    titulo: 'Você juntou 320 pontos',
+    corpo: 'Faltam 180 pra um rodízio grátis. Continue assim!',
+    tipo: 'info',
+    criadoEm: DateTime.now().subtract(const Duration(days: 5)),
+    lida: true,
+  ),
+];
 
 final _demoPromotions = [
   Promotion(
@@ -240,6 +275,7 @@ final demoOverrides = [
   authStateProvider.overrideWith((_) => Stream<User?>.value(null)),
   currentUserProvider.overrideWith((_) => Stream.value(_demoUser)),
   promotionsProvider.overrideWith((_) => Stream.value(_demoPromotions)),
+  notificationsProvider.overrideWith((_) => Stream.value(_demoNotifications)),
   rewardsProvider.overrideWith((_) => Stream.value(_demoRewards)),
   plansProvider.overrideWith((_) => Stream.value(_demoPlans)),
   redemptionsProvider.overrideWith((_) => Stream.value(_demoRedemptions)),
