@@ -15,6 +15,8 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final redemptions = ref.watch(redemptionsProvider);
+    final isSub = ref.watch(isSubscriberProvider);
+    final cupons = redemptions.value ?? const [];
 
     return Scaffold(
       body: SafeArea(
@@ -24,12 +26,15 @@ class ProfileScreen extends ConsumerWidget {
           data: (u) {
             if (u == null) return const EmptyView(mensagem: 'Sem dados.');
             return ListView(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
               children: [
-                Text('Perfil',
-                    style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: 20),
-                _Header(user: u),
+                _Header(user: u, isSub: isSub),
+                const SizedBox(height: 16),
+                _StatsRow(
+                  pontos: u.pontos,
+                  cupons: cupons.length,
+                  socio: isSub,
+                ),
                 const SizedBox(height: 32),
                 const SectionLabel('Meus cupons'),
                 const SizedBox(height: 12),
@@ -39,7 +44,7 @@ class ProfileScreen extends ConsumerWidget {
                   error: (_, _) => const Text('Erro ao carregar cupons.'),
                   data: (list) {
                     if (list.isEmpty) {
-                      return _VazioLinha(
+                      return const _VazioLinha(
                           texto: 'Você ainda não resgatou nenhum prêmio.');
                     }
                     return Column(
@@ -56,21 +61,22 @@ class ProfileScreen extends ConsumerWidget {
                 const SectionLabel('Conta'),
                 const SizedBox(height: 12),
                 _MenuTile(
-                  icone: Icons.person_outline,
-                  titulo: 'Editar dados',
-                  onTap: () {},
-                ),
+                    icone: Icons.person_outline,
+                    titulo: 'Editar dados',
+                    onTap: () {}),
                 _MenuTile(
-                  icone: Icons.location_on_outlined,
-                  titulo: 'Endereço de entrega',
-                  subtitulo: u.endereco ?? 'Não informado',
-                  onTap: () {},
-                ),
+                    icone: Icons.location_on_outlined,
+                    titulo: 'Endereço de entrega',
+                    subtitulo: u.endereco ?? 'Não informado',
+                    onTap: () {}),
                 _MenuTile(
-                  icone: Icons.description_outlined,
-                  titulo: 'Termos e privacidade',
-                  onTap: () {},
-                ),
+                    icone: Icons.notifications_none_rounded,
+                    titulo: 'Notificações',
+                    onTap: () {}),
+                _MenuTile(
+                    icone: Icons.description_outlined,
+                    titulo: 'Termos e privacidade',
+                    onTap: () {}),
                 const SizedBox(height: 24),
                 OutlinedButton.icon(
                   onPressed: () {
@@ -87,6 +93,12 @@ class ProfileScreen extends ConsumerWidget {
                     side: const BorderSide(color: PandaColors.vermelhoAcento),
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Center(
+                  child: Text('Clube Panda · Tio Panda',
+                      style: TextStyle(
+                          color: PandaColors.cinzaTexto, fontSize: 12)),
+                ),
               ],
             );
           },
@@ -96,52 +108,130 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+/// Cabeçalho — avatar grande, nome, e-mail, status de sócio.
 class _Header extends StatelessWidget {
-  const _Header({required this.user});
+  const _Header({required this.user, required this.isSub});
   final AppUser user;
+  final bool isSub;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-            color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 30,
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: PandaColors.laranja, width: 2),
+          ),
+          child: CircleAvatar(
+            radius: 42,
             backgroundColor: PandaColors.laranjaSuave,
             backgroundImage:
                 user.fotoUrl != null ? NetworkImage(user.fotoUrl!) : null,
             child: user.fotoUrl == null
-                ? const Text('🐼', style: TextStyle(fontSize: 26))
+                ? const Text('🐼', style: TextStyle(fontSize: 36))
                 : null,
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(user.nome,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 2),
-                Text(user.email,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: PandaColors.cinzaTexto)),
-              ],
-            ),
+        ),
+        const SizedBox(height: 14),
+        Text(user.nome,
+            style: Theme.of(context).textTheme.headlineSmall,
+            textAlign: TextAlign.center),
+        const SizedBox(height: 2),
+        Text(user.email,
+            style: const TextStyle(color: PandaColors.cinzaTexto)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isSub
+                ? PandaColors.verdeSucesso.withValues(alpha: 0.12)
+                : PandaColors.cinzaClaro,
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(width: 8),
-          PointsBadge(pontos: user.pontos),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(isSub ? Icons.verified_rounded : Icons.person_outline,
+                  size: 16,
+                  color:
+                      isSub ? PandaColors.verdeSucesso : PandaColors.cinzaTexto),
+              const SizedBox(width: 6),
+              Text(isSub ? 'Sócio do Clube' : 'Cliente',
+                  style: TextStyle(
+                      color: isSub
+                          ? PandaColors.verdeSucesso
+                          : PandaColors.cinzaTexto,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Linha de estatísticas: pontos, cupons, plano.
+class _StatsRow extends StatelessWidget {
+  const _StatsRow(
+      {required this.pontos, required this.cupons, required this.socio});
+  final int pontos;
+  final int cupons;
+  final bool socio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _Stat(valor: '$pontos', label: 'Pontos', icone: Icons.star_rounded),
+        const SizedBox(width: 12),
+        _Stat(
+            valor: '$cupons',
+            label: 'Cupons',
+            icone: Icons.confirmation_number_outlined),
+        const SizedBox(width: 12),
+        _Stat(
+            valor: socio ? 'Sim' : 'Não',
+            label: 'Sócio',
+            icone: Icons.workspace_premium_outlined),
+      ],
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.valor, required this.label, required this.icone});
+  final String valor;
+  final String label;
+  final IconData icone;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isDark ? PandaColors.cardDark : PandaColors.branco,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
+        ),
+        child: Column(
+          children: [
+            Icon(icone, color: PandaColors.laranja, size: 22),
+            const SizedBox(height: 8),
+            Text(valor,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: const TextStyle(
+                    color: PandaColors.cinzaTexto, fontSize: 12)),
+          ],
+        ),
       ),
     );
   }
@@ -181,7 +271,15 @@ class _MenuTile extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                Icon(icone, size: 20, color: PandaColors.cinzaTexto),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: PandaColors.laranjaSuave,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(icone, size: 19, color: PandaColors.laranja),
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -293,8 +391,7 @@ class _VazioLinha extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(texto,
-          style: const TextStyle(color: PandaColors.cinzaTexto)),
+      child: Text(texto, style: const TextStyle(color: PandaColors.cinzaTexto)),
     );
   }
 }
