@@ -202,47 +202,110 @@ class _AssinaturaAtiva extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final plans = ref.watch(plansProvider).value ?? const [];
+    Plan? plano;
+    for (final p in plans) {
+      if (p.id == sub.planId) plano = p;
+    }
+    final metodo = sub.formaPagamento == 'pix' ? 'Pix' : 'Cartão de crédito';
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       children: [
         Text('Sua assinatura',
             style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 20),
+        // Card principal do plano
         Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             color: PandaColors.laranjaSuave,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.verified_rounded,
-                      color: PandaColors.laranja, size: 24),
-                  const SizedBox(width: 8),
-                  Text('Plano ativo',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: PandaColors.laranjaEscuro)),
+                  Expanded(
+                    child: Text(
+                      plano != null ? 'Plano ${plano.nome}' : 'Plano ativo',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(color: PandaColors.laranjaEscuro),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: PandaColors.verdeSucesso,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('ATIVO',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10.5,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w700)),
+                  ),
                 ],
               ),
-              if (sub.proximaCobranca != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Próxima cobrança em ${DateFormat("dd 'de' MMMM", 'pt_BR').format(sub.proximaCobranca!)}',
-                  style: const TextStyle(color: PandaColors.preto),
+              if (plano != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(_moeda.format(plano.preco),
+                        style: Theme.of(context)
+                            .textTheme
+                            .displaySmall
+                            ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: PandaColors.laranjaEscuro)),
+                    Text('  / ${plano.intervalo}',
+                        style: const TextStyle(color: PandaColors.cinzaTexto)),
+                  ],
                 ),
               ],
-              if (sub.formaPagamento != null) ...[
-                const SizedBox(height: 4),
-                Text('Pagamento via ${sub.formaPagamento}',
-                    style: const TextStyle(color: PandaColors.cinzaTexto)),
-              ],
+              const SizedBox(height: 18),
+              Container(height: 1, color: PandaColors.laranja.withValues(alpha: 0.2)),
+              const SizedBox(height: 16),
+              if (sub.proximaCobranca != null)
+                _linhaInfo(
+                  Icons.event_outlined,
+                  'Próxima cobrança',
+                  DateFormat("dd 'de' MMMM", 'pt_BR').format(sub.proximaCobranca!),
+                ),
+              const SizedBox(height: 12),
+              _linhaInfo(Icons.credit_card_outlined, 'Pagamento', metodo),
             ],
           ),
         ),
-        const SizedBox(height: 28),
+        if (plano != null && plano.beneficios.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          const SectionLabel('Seus benefícios'),
+          const SizedBox(height: 12),
+          for (final b in plano.beneficios)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(Icons.check_circle,
+                        color: PandaColors.verdeSucesso, size: 19),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(b, style: const TextStyle(height: 1.35))),
+                ],
+              ),
+            ),
+        ],
+        const SizedBox(height: 24),
         const SectionLabel('Gerenciar'),
         const SizedBox(height: 12),
         OutlinedButton(
@@ -253,6 +316,20 @@ class _AssinaturaAtiva extends ConsumerWidget {
           ),
           child: const Text('Cancelar assinatura'),
         ),
+      ],
+    );
+  }
+
+  Widget _linhaInfo(IconData icone, String label, String valor) {
+    return Row(
+      children: [
+        Icon(icone, size: 18, color: PandaColors.laranjaEscuro),
+        const SizedBox(width: 10),
+        Text(label, style: const TextStyle(color: PandaColors.cinzaTexto)),
+        const Spacer(),
+        Text(valor,
+            style: const TextStyle(
+                fontWeight: FontWeight.w600, color: PandaColors.preto)),
       ],
     );
   }
