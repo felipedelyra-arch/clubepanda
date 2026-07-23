@@ -81,6 +81,28 @@ class ErrorView extends StatelessWidget {
   }
 }
 
+/// Rótulo de seção (eyebrow) — maiúsculas espaçadas com traço laranja.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.texto, {super.key});
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(width: 20, height: 2, color: PandaColors.laranja),
+        const SizedBox(width: 10),
+        Text(texto.toUpperCase(),
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.4,
+                color: PandaColors.cinzaTexto)),
+      ],
+    );
+  }
+}
+
 /// Badge de pontos (gamificação).
 class PointsBadge extends StatelessWidget {
   const PointsBadge({super.key, required this.pontos});

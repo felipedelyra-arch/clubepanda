@@ -21,34 +21,42 @@ class PlansScreen extends ConsumerWidget {
     final sub = ref.watch(subscriptionProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Planos')),
-      body: sub.value?.ativa == true
-          ? _AssinaturaAtiva(sub: sub.value!)
-          : plans.when(
-              loading: () => const LoadingView(),
-              error: (e, _) => ErrorView(
-                  mensagem: 'Erro ao carregar planos.',
-                  onRetry: () => ref.invalidate(plansProvider)),
-              data: (list) {
-                if (list.isEmpty) {
-                  return const EmptyView(
-                    mensagem: 'Nenhum plano disponível.',
-                    icone: Icons.workspace_premium_outlined,
+      body: SafeArea(
+        child: sub.value?.ativa == true
+            ? _AssinaturaAtiva(sub: sub.value!)
+            : plans.when(
+                loading: () => const LoadingView(),
+                error: (e, _) => ErrorView(
+                    mensagem: 'Não deu pra carregar os planos.',
+                    onRetry: () => ref.invalidate(plansProvider)),
+                data: (list) {
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                    children: [
+                      Text('Planos',
+                          style: Theme.of(context).textTheme.headlineMedium),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Vantagens de sócio no seu japa favorito. Cancele quando quiser.',
+                        style: TextStyle(
+                            color: PandaColors.cinzaTexto, fontSize: 15, height: 1.4),
+                      ),
+                      const SizedBox(height: 28),
+                      if (list.isEmpty)
+                        const EmptyView(
+                          mensagem: 'Nenhum plano disponível.',
+                          icone: Icons.workspace_premium_outlined,
+                        )
+                      else
+                        for (final p in list) ...[
+                          _PlanCard(plan: p),
+                          const SizedBox(height: 16),
+                        ],
+                    ],
                   );
-                }
-                return ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    Text('Escolha seu plano 🐼',
-                        style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 8),
-                    const Text('Cancele quando quiser.'),
-                    const SizedBox(height: 20),
-                    ...list.map((p) => _PlanCard(plan: p)),
-                  ],
-                );
-              },
-            ),
+                },
+              ),
+      ),
     );
   }
 }
@@ -67,7 +75,7 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
   Future<void> _assinar() async {
     if (kDemo) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Checkout desativado no modo demo 🐼')),
+        const SnackBar(content: Text('Checkout desativado no modo demo')),
       );
       return;
     }
@@ -94,84 +102,98 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
   @override
   Widget build(BuildContext context) {
     final p = widget.plan;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final destaque = p.recomendado;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? PandaColors.cardDark : PandaColors.branco,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: p.recomendado ? PandaColors.laranja : Colors.transparent,
-          width: 2,
+          color: destaque
+              ? PandaColors.laranja
+              : (isDark ? PandaColors.hairlineDark : PandaColors.hairline),
+          width: destaque ? 1.6 : 1,
         ),
-        color: Theme.of(context).cardColor,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(p.nome,
-                    style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
-                if (p.recomendado)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: PandaColors.laranja,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('Recomendado',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                  ),
-              ],
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (destaque) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: PandaColors.laranja,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('MAIS ESCOLHIDO',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10.5,
+                      letterSpacing: 1,
+                      fontWeight: FontWeight.w700)),
             ),
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(_moeda.format(p.preco),
-                    style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: PandaColors.laranja)),
-                Text(' / ${p.intervalo}',
-                    style: const TextStyle(color: PandaColors.cinzaTexto)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ...p.beneficios.map((b) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle,
-                          color: PandaColors.verdeSucesso, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(b)),
-                    ],
-                  ),
-                )),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loading ? null : _assinar,
-              child: _loading
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Text('Assinar'),
-            ),
+            const SizedBox(height: 14),
           ],
-        ),
+          Text(p.nome, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(_moeda.format(p.preco),
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: PandaColors.laranja,
+                      )),
+              Text('  / ${p.intervalo}',
+                  style: const TextStyle(color: PandaColors.cinzaTexto)),
+            ],
+          ),
+          const SizedBox(height: 18),
+          for (final b in p.beneficios)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Icon(Icons.check_circle,
+                        color: PandaColors.verdeSucesso, size: 19),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(b, style: const TextStyle(height: 1.35))),
+                ],
+              ),
+            ),
+          const SizedBox(height: 10),
+          destaque
+              ? ElevatedButton(
+                  onPressed: _loading ? null : _assinar,
+                  child: _loading
+                      ? const _BtnSpinner()
+                      : const Text('Assinar agora'),
+                )
+              : OutlinedButton(
+                  onPressed: _loading ? null : _assinar,
+                  child: _loading ? const _BtnSpinner() : const Text('Assinar'),
+                ),
+        ],
       ),
     );
   }
+}
+
+class _BtnSpinner extends StatelessWidget {
+  const _BtnSpinner();
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+        height: 22,
+        width: 22,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+      );
 }
 
 class _AssinaturaAtiva extends ConsumerWidget {
@@ -181,37 +203,48 @@ class _AssinaturaAtiva extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       children: [
+        Text('Sua assinatura',
+            style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 20),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: PandaColors.verdeSucesso.withValues(alpha: 0.12),
+            color: PandaColors.laranjaSuave,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.verified, color: PandaColors.verdeSucesso),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Assinatura ativa',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    if (sub.proximaCobranca != null)
-                      Text(
-                        'Próxima cobrança: ${DateFormat('dd/MM/yyyy').format(sub.proximaCobranca!)}',
-                        style:
-                            const TextStyle(color: PandaColors.cinzaTexto),
-                      ),
-                  ],
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.verified_rounded,
+                      color: PandaColors.laranja, size: 24),
+                  const SizedBox(width: 8),
+                  Text('Plano ativo',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: PandaColors.laranjaEscuro)),
+                ],
               ),
+              if (sub.proximaCobranca != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Próxima cobrança em ${DateFormat("dd 'de' MMMM", 'pt_BR').format(sub.proximaCobranca!)}',
+                  style: const TextStyle(color: PandaColors.preto),
+                ),
+              ],
+              if (sub.formaPagamento != null) ...[
+                const SizedBox(height: 4),
+                Text('Pagamento via ${sub.formaPagamento}',
+                    style: const TextStyle(color: PandaColors.cinzaTexto)),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
+        const SectionLabel('Gerenciar'),
+        const SizedBox(height: 12),
         OutlinedButton(
           onPressed: () => _confirmarCancelamento(context, ref),
           style: OutlinedButton.styleFrom(
@@ -246,7 +279,7 @@ class _AssinaturaAtiva extends ConsumerWidget {
     if (kDemo) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cancelamento desativado no modo demo 🐼')),
+          const SnackBar(content: Text('Cancelamento desativado no modo demo')),
         );
       }
       return;
