@@ -1,16 +1,13 @@
+import logoUrl from '../assets/logo.png';
+
 export function PandaLogo({ size = 40, showWordmark = true }: { size?: number; showWordmark?: boolean }) {
-  const mark = (
-    <div
-      className="flex items-center justify-center bg-panda-laranja text-white shrink-0"
-      style={{ width: size, height: size, borderRadius: size * 0.28, fontSize: size * 0.55 }}
-    >
-      🐼
-    </div>
-  );
-  if (!showWordmark) return mark;
+  if (!showWordmark) {
+    return <img src={logoUrl} alt="Logo" style={{ height: size, width: size, objectFit: 'contain' }} />;
+  }
+
   return (
     <div className="flex items-center gap-2">
-      {mark}
+      <img src={logoUrl} alt="Clube Panda" style={{ height: size, objectFit: 'contain' }} />
       <div className="leading-tight">
         <div className="font-bold" style={{ fontSize: size * 0.42 }}>
           Clube Panda

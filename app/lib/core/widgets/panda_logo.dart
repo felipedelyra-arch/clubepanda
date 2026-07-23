@@ -9,7 +9,7 @@ class PandaLogo extends StatelessWidget {
     super.key,
     this.size = 48,
     this.showWordmark = true,
-    this.useAsset = false,
+    this.useAsset = true,
   });
 
   final double size;
