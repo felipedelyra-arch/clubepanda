@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/push_service.dart';
 import 'core/demo.dart';
+import 'core/widgets/phone_frame.dart';
 import 'router/app_router.dart';
 
 Future<void> main() async {
@@ -42,6 +43,7 @@ class ClubePandaApp extends ConsumerWidget {
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
       routerConfig: router,
+      builder: (context, child) => PhoneFrame(child: child ?? const SizedBox()),
     );
   }
 }
