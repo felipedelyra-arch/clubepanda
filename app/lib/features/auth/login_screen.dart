@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
+import '../../core/theme/colors.dart';
 import '../../core/widgets/panda_logo.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -94,14 +95,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 12),
-                  const Center(child: PandaLogo(size: 150)),
-                  const SizedBox(height: 32),
-                  Text('Bem-vindo de volta 🐼',
-                      style: Theme.of(context).textTheme.headlineSmall),
-                  const SizedBox(height: 8),
-                  const Text('Entre pra acessar suas promoções e prêmios.'),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 20),
+                  const Center(child: PandaLogo(size: 132, showWordmark: false)),
+                  const SizedBox(height: 28),
+                  Center(
+                    child: Text('Clube Panda',
+                        style: Theme.of(context).textTheme.headlineMedium),
+                  ),
+                  const SizedBox(height: 6),
+                  const Center(
+                    child: Text(
+                      'Seu japa favorito, com vantagens de sócio.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: PandaColors.cinzaTexto, fontSize: 15),
+                    ),
+                  ),
+                  const SizedBox(height: 36),
                   TextFormField(
                     controller: _email,
                     keyboardType: TextInputType.emailAddress,

@@ -111,7 +111,7 @@ class _RewardCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: PandaColors.laranja.withValues(alpha: 0.12),
+                  color: PandaColors.laranjaSuave,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icone, color: PandaColors.laranja, size: 28),

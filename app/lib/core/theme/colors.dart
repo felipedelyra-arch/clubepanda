@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 
-/// Paleta Clube Panda (Tio Panda). Baseada na logo do panda com chapéu.
+/// Paleta Clube Panda (Tio Panda) — laranja sóbrio e minimalista.
+/// Laranja é acento (CTA, pontos), não preenchimento. Base em neutros quentes.
 abstract class PandaColors {
-  static const laranja = Color(0xFFF47A20); // primária / CTA
-  static const laranjaEscuro = Color(0xFFD9631A); // hover / pressed
-  static const preto = Color(0xFF1A1A1A); // texto / topbar
-  static const branco = Color(0xFFFFFFFF); // fundo
-  static const cinzaClaro = Color(0xFFF5F5F5); // cards / superfícies
-  static const cinzaTexto = Color(0xFF8A8A8A); // texto secundário
-  static const verdeSucesso = Color(0xFF2FBF71); // pagamento OK
-  static const vermelhoAcento = Color(0xFFE23B2E); // sushi da logo
+  // Marca
+  static const laranja = Color(0xFFE86A22); // primária / CTA (modesto)
+  static const laranjaEscuro = Color(0xFFC9591A); // pressed
+  static const laranjaSuave = Color(0xFFF6EDE4); // fundo de acento leve
 
-  // Superfícies do tema escuro
-  static const fundoDark = Color(0xFF121212);
-  static const superficieDark = Color(0xFF1E1E1E);
-  static const cardDark = Color(0xFF262626);
+  // Neutros quentes (claro)
+  static const fundo = Color(0xFFFBF9F5); // papel quente
+  static const branco = Color(0xFFFFFFFF); // superfície de card
+  static const cinzaClaro = Color(0xFFF4EFE8); // superfície alternativa
+  static const hairline = Color(0xFFEBE4D9); // divisores/bordas
+  static const preto = Color(0xFF201B15); // texto principal (carvão quente)
+  static const cinzaTexto = Color(0xFF8C8377); // texto secundário
+
+  // Estados
+  static const verdeSucesso = Color(0xFF2FA36B);
+  static const vermelhoAcento = Color(0xFFE23B2E); // sushi da logo (raro)
+
+  // Neutros quentes (escuro)
+  static const fundoDark = Color(0xFF141210);
+  static const superficieDark = Color(0xFF1E1B17);
+  static const cardDark = Color(0xFF262119);
+  static const hairlineDark = Color(0x14FFFFFF);
 }

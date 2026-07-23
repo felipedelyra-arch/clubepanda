@@ -90,23 +90,31 @@ class PointsBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: PandaColors.laranja.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
+        color: PandaColors.laranjaSuave,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, color: PandaColors.laranja, size: 18),
-          const SizedBox(width: 4),
+          const Icon(Icons.star_rounded, color: PandaColors.laranja, size: 17),
+          const SizedBox(width: 5),
           Text(
-            '$pontos pts',
+            '$pontos',
             style: const TextStyle(
-              color: PandaColors.laranja,
-              fontWeight: FontWeight.w600,
+              color: PandaColors.laranjaEscuro,
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
             ),
           ),
+          const SizedBox(width: 3),
+          const Text('pts',
+              style: TextStyle(
+                color: PandaColors.laranjaEscuro,
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              )),
         ],
       ),
     );

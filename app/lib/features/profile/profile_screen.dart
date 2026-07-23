@@ -31,8 +31,7 @@ class ProfileScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 44,
-                      backgroundColor:
-                          PandaColors.laranja.withValues(alpha: 0.15),
+                      backgroundColor: PandaColors.laranjaSuave,
                       backgroundImage:
                           u.fotoUrl != null ? NetworkImage(u.fotoUrl!) : null,
                       child: u.fotoUrl == null
