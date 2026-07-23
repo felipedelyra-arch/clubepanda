@@ -11,6 +11,10 @@ class PhoneFrame extends StatelessWidget {
   // Dimensões aproximadas de um celular moderno (lógicas).
   static const _w = 390.0;
   static const _h = 844.0;
+  static const _bezel = 8.0; // espessura da borda preta
+  static const _btn = 4.0; // saliência dos botões
+  static const _frameW = _w + _bezel * 2;
+  static const _frameH = _h + _bezel * 2;
 
   @override
   Widget build(BuildContext context) {
@@ -37,49 +41,69 @@ class PhoneFrame extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: _w + 16,
-            height: _h + 16,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1A1A1A), // moldura preta
-              borderRadius: BorderRadius.circular(52),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 40,
-                  spreadRadius: 4,
-                  offset: const Offset(0, 16),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(44),
-              child: SizedBox(
-                width: _w,
-                height: _h,
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: conteudo),
-                    // Notch (ilha).
-                    Positioned(
-                      top: 10,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: Container(
-                          width: 120,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1A1A1A),
-                            borderRadius: BorderRadius.circular(18),
+          SizedBox(
+            width: _frameW + _btn * 2,
+            height: _frameH,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                // ---- botões laterais (atrás da moldura) ----
+                // Esquerda: switch de mudo + volume +/-
+                _sideButton(left: 0, top: 130, height: 26),
+                _sideButton(left: 0, top: 180, height: 56),
+                _sideButton(left: 0, top: 248, height: 56),
+                // Direita: power
+                _sideButton(right: 0, top: 210, height: 96),
+
+                // ---- moldura + tela ----
+                Container(
+                  width: _frameW,
+                  height: _frameH,
+                  padding: const EdgeInsets.all(_bezel),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A1A),
+                    borderRadius: BorderRadius.circular(52),
+                    border: Border.all(color: const Color(0xFF2C2C2C), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        blurRadius: 40,
+                        spreadRadius: 4,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(44),
+                    child: SizedBox(
+                      width: _w,
+                      height: _h,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: conteudo),
+                          // Notch (ilha).
+                          Positioned(
+                            top: 10,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: Container(
+                                width: 120,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A1A1A),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -91,6 +115,38 @@ class PhoneFrame extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Botão físico lateral (saliência arredondada na borda da moldura).
+  Widget _sideButton({
+    double? left,
+    double? right,
+    required double top,
+    required double height,
+  }) {
+    return Positioned(
+      left: left,
+      right: right,
+      top: top,
+      child: Container(
+        width: _btn + 3,
+        height: height,
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.horizontal(
+            left: Radius.circular(right != null ? 3 : 0),
+            right: Radius.circular(left != null ? 3 : 0),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 2,
+              offset: Offset(left != null ? -1 : 1, 0),
+            ),
+          ],
+        ),
       ),
     );
   }
