@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/services/services.dart';
+import '../../core/demo.dart';
 import '../../core/widgets/panda_logo.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -34,6 +35,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   Future<void> _cadastrar() async {
     if (!_formKey.currentState!.validate()) return;
+    // Demo: simula cadastro e entra direto.
+    if (kDemo) {
+      context.go('/home');
+      return;
+    }
     setState(() {
       _loading = true;
       _erro = null;
