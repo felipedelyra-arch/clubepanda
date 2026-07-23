@@ -8,6 +8,7 @@ import { useCollection } from "../lib/useCollection";
 import type { Promotion } from "../lib/types";
 import { Card, Button, Badge, Spinner, EmptyState } from "../components/ui";
 import { Modal, ConfirmDialog, Field, inputBase } from "../components/Modal";
+import { demoBlock } from "../lib/demo";
 
 const vazia: Partial<Promotion> = {
   titulo: "",
@@ -26,6 +27,7 @@ export function Promotions() {
 
   async function salvar() {
     if (!editando?.titulo) return toast.error("Informe o título.");
+    if (demoBlock("Promoção não salva")) return setEditando(null);
     setSalvando(true);
     try {
       let imagem = editando.imagem ?? null;
@@ -128,6 +130,7 @@ export function Promotions() {
         open={!!excluir}
         onClose={() => setExcluir(null)}
         onConfirm={async () => {
+          if (demoBlock("Promoção não excluída")) return;
           if (excluir) {
             await deleteDoc(doc(db, "promotions", excluir.id));
             toast.success("Promoção excluída.");

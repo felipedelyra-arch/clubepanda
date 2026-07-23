@@ -7,6 +7,7 @@ import {
 } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth } from "../lib/firebase";
+import { IS_DEMO, demoAdminUser } from "../lib/demo";
 
 interface AuthState {
   user: User | null;
@@ -23,11 +24,14 @@ const AuthCtx = createContext<AuthState>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(
+    IS_DEMO ? (demoAdminUser as unknown as User) : null
+  );
+  const [isAdmin, setIsAdmin] = useState(IS_DEMO);
+  const [loading, setLoading] = useState(!IS_DEMO);
 
   useEffect(() => {
+    if (IS_DEMO) return; // modo demo: admin fake, sem Firebase
     return onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {

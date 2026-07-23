@@ -7,6 +7,7 @@ import { useCollection } from "../lib/useCollection";
 import type { Plan } from "../lib/types";
 import { Card, Button, Badge, Spinner, EmptyState } from "../components/ui";
 import { Modal, ConfirmDialog, Field, inputBase } from "../components/Modal";
+import { demoBlock } from "../lib/demo";
 
 const intervalos = ["mensal", "trimestral", "anual"] as const;
 const vazio: Partial<Plan> = { nome: "", preco: 0, intervalo: "mensal", beneficios: [], recomendado: false };
@@ -24,6 +25,7 @@ export function Plans() {
 
   async function salvar() {
     if (!editando?.nome) return toast.error("Informe o nome.");
+    if (demoBlock("Plano não salvo")) return setEditando(null);
     const payload = {
       nome: editando.nome,
       preco: Number(editando.preco ?? 0),
@@ -102,7 +104,7 @@ export function Plans() {
       </Modal>
 
       <ConfirmDialog open={!!excluir} onClose={() => setExcluir(null)}
-        onConfirm={async () => { if (excluir) { await deleteDoc(doc(db, "plans", excluir.id)); toast.success("Plano excluído."); } }}
+        onConfirm={async () => { if (demoBlock("Plano não excluído")) return; if (excluir) { await deleteDoc(doc(db, "plans", excluir.id)); toast.success("Plano excluído."); } }}
         title="Excluir plano?" message={`"${excluir?.nome}" será removido.`} />
     </div>
   );

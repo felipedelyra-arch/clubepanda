@@ -8,6 +8,7 @@ import { useCollection } from "../lib/useCollection";
 import type { AppUser } from "../lib/types";
 import { Card, Button, Badge } from "../components/ui";
 import { Field, inputBase } from "../components/Modal";
+import { demoBlock } from "../lib/demo";
 
 export function Settings() {
   const { data: users } = useCollection<AppUser>("users");
@@ -17,11 +18,13 @@ export function Settings() {
   const admins = users.filter((u) => u.role === "admin");
 
   async function salvarRestaurante() {
+    if (demoBlock("Dados não salvos")) return;
     await setDoc(doc(db, "config", "restaurante"), { nome }, { merge: true });
     toast.success("Dados salvos.");
   }
 
   async function alterarAdmin(targetUid: string, makeAdmin: boolean) {
+    if (demoBlock(makeAdmin ? "Admin não concedido" : "Admin não revogado")) return setUidAlvo("");
     try {
       await httpsCallable(functions, "setAdminRole")({ targetUid, makeAdmin });
       toast.success(makeAdmin ? "Admin concedido." : "Admin revogado.");

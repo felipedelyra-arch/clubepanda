@@ -7,6 +7,7 @@ import { useCollection } from "../lib/useCollection";
 import type { AppUser, Subscription } from "../lib/types";
 import { Card, Badge, Spinner, Button } from "../components/ui";
 import { Modal, Field, inputBase } from "../components/Modal";
+import { demoBlock } from "../lib/demo";
 
 export function Members() {
   const { data: users, loading } = useCollection<AppUser>("users");
@@ -27,6 +28,7 @@ export function Members() {
 
   async function ajustarPontos() {
     if (!sel) return;
+    if (demoBlock("Pontos não alterados")) return setSel(null);
     await updateDoc(doc(db, "users", sel.uid), { pontos: Number(pontos) });
     toast.success("Pontos atualizados.");
     setSel(null);

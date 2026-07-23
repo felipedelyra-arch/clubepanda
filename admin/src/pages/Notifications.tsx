@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { functions } from "../lib/firebase";
 import { Card, Button } from "../components/ui";
 import { Field, inputBase } from "../components/Modal";
+import { demoBlock } from "../lib/demo";
 
 export function Notifications() {
   const [titulo, setTitulo] = useState("");
@@ -14,6 +15,7 @@ export function Notifications() {
 
   async function enviar() {
     if (!titulo || !corpo) return toast.error("Preencha título e mensagem.");
+    if (demoBlock("Push não enviado")) { setTitulo(""); setCorpo(""); return; }
     setEnviando(true);
     try {
       const res = await httpsCallable(functions, "sendPush")({ titulo, corpo, onlySubscribers });

@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from "react";
 import { PandaLogo } from "./PandaLogo";
 import { useAuth } from "../auth/AuthContext";
+import { IS_DEMO } from "../lib/demo";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -85,6 +86,11 @@ export function Layout() {
         </div>
       </aside>
       <main className="flex-1 overflow-y-auto p-8">
+        {IS_DEMO && (
+          <div className="mb-6 rounded-xl bg-panda-laranja/15 px-4 py-2.5 text-sm font-medium text-panda-laranja">
+            🐼 Modo demonstração — dados fictícios. Salvar/excluir/enviar estão desativados.
+          </div>
+        )}
         <Outlet />
       </main>
     </div>

@@ -7,6 +7,7 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { IS_DEMO, demoData } from "./demo";
 
 /** Converte Timestamps do Firestore em Date recursivamente (nível 1). */
 function normalize<T>(id: string, data: Record<string, unknown>): T {
@@ -31,6 +32,13 @@ export function useCollection<T>(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Modo demo: devolve dados fictícios, sem tocar o Firestore.
+    if (IS_DEMO) {
+      setData((demoData[path] as T[]) ?? []);
+      setLoading(false);
+      return;
+    }
+
     const q = query(collection(db, path), ...constraints);
     const unsub = onSnapshot(
       q,

@@ -9,6 +9,7 @@ import { useCollection } from "../lib/useCollection";
 import type { Reward, Redemption, RewardTipo } from "../lib/types";
 import { Card, Button, Badge, Spinner, EmptyState } from "../components/ui";
 import { Modal, ConfirmDialog, Field, inputBase } from "../components/Modal";
+import { demoBlock } from "../lib/demo";
 
 const tipos: RewardTipo[] = ["rodizio", "prato", "sobremesa", "cupom"];
 const vazio: Partial<Reward> = { titulo: "", descricao: "", tipo: "cupom", custoPontos: 0, estoque: 1, apenasAssinantes: false };
@@ -23,6 +24,7 @@ export function Rewards() {
 
   async function salvar() {
     if (!editando?.titulo) return toast.error("Informe o título.");
+    if (demoBlock("Premiação não salva")) return setEditando(null);
     setSalvando(true);
     try {
       let imagem = editando.imagem ?? null;
@@ -53,6 +55,7 @@ export function Rewards() {
   }
 
   async function validar(codigo: string) {
+    if (demoBlock("Resgate não validado")) return;
     try {
       await httpsCallable(functions, "validateRedemption")({ codigo });
       toast.success("Resgate validado.");
@@ -172,6 +175,7 @@ export function Rewards() {
         open={!!excluir}
         onClose={() => setExcluir(null)}
         onConfirm={async () => {
+          if (demoBlock("Premiação não excluída")) return;
           if (excluir) {
             await deleteDoc(doc(db, "rewards", excluir.id));
             toast.success("Premiação excluída.");
