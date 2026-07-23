@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'models/models.dart';
@@ -6,6 +7,9 @@ import 'services/services.dart';
 /// Liga com: flutter run -d chrome --dart-define=DEMO=true
 /// Bypassa Firebase (sem initializeApp) e injeta dados fictícios nas telas.
 const bool kDemo = bool.fromEnvironment('DEMO', defaultValue: false);
+
+/// No demo, controla se o usuário é sócio ativo (alterna as telas).
+final demoIsSubscriber = StateProvider<bool>((_) => true);
 
 final _demoUser = AppUser(
   uid: 'u_demo',
@@ -129,16 +133,19 @@ final demoOverrides = [
   rewardsProvider.overrideWith((_) => Stream.value(_demoRewards)),
   plansProvider.overrideWith((_) => Stream.value(_demoPlans)),
   redemptionsProvider.overrideWith((_) => Stream.value(_demoRedemptions)),
-  subscriptionProvider.overrideWith(
-    (_) => Stream.value(
-      Subscription(
-        id: 's_demo',
-        userId: 'u_demo',
-        planId: 'p_trimestral',
-        status: 'active',
-        proximaCobranca: DateTime.now().add(const Duration(days: 22)),
-        formaPagamento: 'cartao',
-      ),
-    ),
-  ),
+  subscriptionProvider.overrideWith((ref) {
+    final ativo = ref.watch(demoIsSubscriber);
+    return Stream.value(
+      ativo
+          ? Subscription(
+              id: 's_demo',
+              userId: 'u_demo',
+              planId: 'p_trimestral',
+              status: 'active',
+              proximaCobranca: DateTime.now().add(const Duration(days: 22)),
+              formaPagamento: 'cartao',
+            )
+          : null,
+    );
+  }),
 ];
