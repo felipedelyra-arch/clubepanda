@@ -44,3 +44,6 @@ app/**/GeneratedPluginRegistrant.*
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Functions build output
+firebase/functions/lib/
