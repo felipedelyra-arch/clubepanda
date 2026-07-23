@@ -1,0 +1,46 @@
+# Node
+node_modules/
+npm-debug.log*
+.pnpm-debug.log*
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.local
+firebase/functions/.env
+firebase/functions/.runtimeconfig.json
+serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+
+# Build
+dist/
+build/
+.next/
+out/
+admin/dist/
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Flutter
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.pub-cache/
+app/.pub/
+app/ios/Pods/
+app/android/.gradle/
+app/android/local.properties
+app/**/GeneratedPluginRegistrant.*
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

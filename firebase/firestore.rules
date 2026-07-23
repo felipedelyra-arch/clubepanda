@@ -1,0 +1,92 @@
+rules_version = '2';
+
+// Clube Panda — Firestore Security Rules
+//
+// Coleções: users, subscriptions, plans, promotions, rewards, redemptions, payments
+//
+// Regra de ouro: escrita sensível (cobrança, assinatura, pagamentos, resgates,
+// concessão de admin) roda APENAS em Cloud Functions com Admin SDK, que ignora
+// estas rules. O cliente nunca escreve isso direto.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- helpers ----
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.role == 'admin';
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ---- users ----
+    // Cada usuário lê/escreve só os próprios dados. Admin lê todos.
+    // Campos sensíveis (pontos, role) só o backend altera.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+                    && (!('pontos' in request.resource.data)
+                        || request.resource.data.pontos == 0)
+                    // usuário não pode se auto-conceder role
+                    && !('role' in request.resource.data);
+      allow update: if isOwner(userId)
+                    // usuário não pode mexer nos próprios pontos nem em role
+                    && request.resource.data.pontos == resource.data.pontos
+                    && request.resource.data.get('role', '') == resource.data.get('role', '');
+      allow delete: if isAdmin();
+    }
+
+    // ---- subscriptions ----
+    // Somente leitura pelo dono/admin. Escrita só backend (Cloud Functions).
+    match /subscriptions/{subId} {
+      allow read: if isSignedIn()
+                  && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false; // apenas Cloud Functions
+    }
+
+    // ---- plans ----
+    // Leitura pública (vitrine de planos). Escrita só admin/backend.
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- promotions ----
+    // Leitura pública. Escrita só admin.
+    match /promotions/{promoId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- rewards ----
+    // Leitura pública. Escrita só admin.
+    match /rewards/{rewardId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- redemptions ----
+    // Dono lê os próprios resgates. Admin lê todos. Escrita só backend
+    // (resgate consome pontos/estoque; validação marca como usado).
+    match /redemptions/{redemptionId} {
+      allow read: if isSignedIn()
+                  && (resource.data.userId == request.auth.uid || isAdmin());
+      allow write: if false; // apenas Cloud Functions
+    }
+
+    // ---- payments ----
+    // Só admin lê (financeiro). Escrita só backend (webhooks de pagamento).
+    match /payments/{paymentId} {
+      allow read: if isAdmin();
+      allow write: if false; // apenas Cloud Functions
+    }
+
+    // fallback: nega tudo que não casou acima
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
