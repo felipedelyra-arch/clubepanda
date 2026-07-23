@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import '../theme/colors.dart';
+
 /// Mostra o app dentro de um "celular" quando roda em tela larga no navegador
 /// (só demonstração web). Em janela estreita ou app nativo, renderiza direto.
 class PhoneFrame extends StatelessWidget {
@@ -62,12 +64,12 @@ class PhoneFrame extends StatelessWidget {
                   height: _frameH,
                   padding: const EdgeInsets.all(_bezel),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
+                    color: PandaColors.laranja, // moldura na cor da logo
                     borderRadius: BorderRadius.circular(52),
-                    border: Border.all(color: const Color(0xFF2C2C2C), width: 2),
+                    border: Border.all(color: PandaColors.laranjaEscuro, width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.35),
+                        color: PandaColors.laranja.withValues(alpha: 0.35),
                         blurRadius: 40,
                         spreadRadius: 4,
                         offset: const Offset(0, 16),
@@ -134,7 +136,7 @@ class PhoneFrame extends StatelessWidget {
         width: _btn + 3,
         height: height,
         decoration: BoxDecoration(
-          color: const Color(0xFF141414),
+          color: PandaColors.laranjaEscuro,
           borderRadius: BorderRadius.horizontal(
             left: Radius.circular(right != null ? 3 : 0),
             right: Radius.circular(left != null ? 3 : 0),
