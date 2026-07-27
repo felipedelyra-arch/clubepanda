@@ -5,11 +5,14 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/services/services.dart';
 import '../../core/theme/colors.dart';
+import '../../core/theme/dimens.dart';
+import '../../core/widgets/entrada.dart';
+import '../../core/widgets/panda_logo.dart';
 import '../../core/widgets/state_views.dart';
 
 /// Carteirinha digital do sócio.
 /// Tela simples: mostra o app no caixa, o atendente lê o QR (ou o número)
-/// pra identificar você e somar/usar pontos. Pensada pra qualquer idade.
+/// pra identificar você e liberar seus benefícios. Pensada pra qualquer idade.
 class CarteirinhaScreen extends ConsumerWidget {
   const CarteirinhaScreen({super.key});
 
@@ -36,7 +39,7 @@ class CarteirinhaScreen extends ConsumerWidget {
             final codigo = u.uid.toUpperCase();
             return ListView(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-              children: [
+              children: escalonar([
                 const Text(
                   'Mostre esta tela no caixa do Tio Panda.',
                   textAlign: TextAlign.center,
@@ -46,19 +49,18 @@ class CarteirinhaScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
                 _Cartao(
                   nome: u.nome,
-                  pontos: u.pontos,
                   socio: isSub,
                   codigo: codigo,
                 ),
                 const SizedBox(height: 28),
-                _passo(Icons.looks_one_rounded, 'Abra esta tela ao pagar.'),
+                _passo(Icons.looks_one_rounded, 'Abra esta tela no caixa.'),
                 const SizedBox(height: 12),
                 _passo(Icons.looks_two_rounded,
                     'O atendente lê o código (QR ou número).'),
                 const SizedBox(height: 12),
                 _passo(Icons.looks_3_rounded,
-                    'Seus pontos entram na hora. Pronto!'),
-              ],
+                    'Pronto — você está identificado como sócio.'),
+              ]),
             );
           },
         ),
@@ -83,40 +85,79 @@ class CarteirinhaScreen extends ConsumerWidget {
 
 class _Cartao extends StatelessWidget {
   const _Cartao(
-      {required this.nome,
-      required this.pontos,
-      required this.socio,
-      required this.codigo});
+      {required this.nome, required this.socio, required this.codigo});
   final String nome;
-  final int pontos;
   final bool socio;
   final String codigo;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // Sombra num DecoratedBox externo, com spread negativo: dentro do
+    // Container clipado ela escapava pelos cantos de baixo e deixava a
+    // silhueta com quinas retas.
+    return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [PandaColors.laranja, PandaColors.laranjaEscuro],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: PandaRadius.blg,
         boxShadow: [
           BoxShadow(
-            color: PandaColors.laranja.withValues(alpha: 0.4),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
+            color: PandaColors.laranja.withValues(alpha: 0.32),
+            blurRadius: 30,
+            spreadRadius: -8,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [PandaColors.laranja, PandaColors.laranjaEscuro],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: PandaRadius.blg,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // Marca d'água: a logo grande sangrando pelo canto, bem apagada.
+            // Dá textura ao cartão sem competir com o QR.
+            Positioned(
+              right: -68,
+              bottom: -52,
+              child: Opacity(
+                opacity: 0.07,
+                child: Transform.rotate(
+                  angle: -0.18,
+                  child: const PandaLogo(size: 210, showWordmark: false),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: _conteudo(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _conteudo(BuildContext context) {
+    return Column(
         children: [
           Row(
             children: [
-              const Text('🐼', style: TextStyle(fontSize: 26)),
-              const SizedBox(width: 8),
+              // Logo real num selo branco — emoji em cartão premium
+              // parecia rascunho.
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const PandaLogo(size: 26, showWordmark: false),
+              ),
+              const SizedBox(width: 10),
               const Expanded(
                 child: Text('Clube Panda',
                     style: TextStyle(
@@ -130,7 +171,7 @@ class _Cartao extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: PandaRadius.bxs,
                 ),
                 child: Text(socio ? 'SÓCIO' : 'CLIENTE',
                     style: const TextStyle(
@@ -147,7 +188,7 @@ class _Cartao extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: PandaRadius.blg,
             ),
             child: QrImageView(
               data: codigo,
@@ -174,28 +215,21 @@ class _Cartao extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
             children: [
-              const Icon(Icons.star_rounded, color: Colors.white, size: 26),
-              const SizedBox(width: 6),
-              Text('$pontos',
+              Icon(socio ? Icons.verified_rounded : Icons.info_outline,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                  socio
+                      ? 'Sócio ativo · prêmios liberados'
+                      : 'Assine pra liberar os prêmios',
                   style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w800)),
-              const SizedBox(width: 6),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text('pontos',
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 15)),
-              ),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
         ],
-      ),
     );
   }
 }

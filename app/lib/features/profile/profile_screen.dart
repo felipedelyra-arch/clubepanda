@@ -1,14 +1,18 @@
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
-import '../../core/ui_prefs.dart';
-import '../../core/app_prefs.dart';
 import '../../core/theme/colors.dart';
+import '../../core/theme/dimens.dart';
 import '../../core/widgets/state_views.dart';
+import '../../core/widgets/entrada.dart';
 import '../../core/models/models.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -29,93 +33,54 @@ class ProfileScreen extends ConsumerWidget {
           data: (u) {
             if (u == null) return const EmptyView(mensagem: 'Sem dados.');
             return ListView(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-              children: [
-                _Header(user: u, isSub: isSub),
-                const SizedBox(height: 16),
-                _StatsRow(
-                  pontos: u.pontos,
-                  cupons: cupons.length,
-                  socio: isSub,
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+              children: escalonar([
+                // Engrenagem no topo: ajustes e dados de conta saíram daqui
+                // pra não competir com o que o sócio abre o perfil pra ver.
+                const Align(
+                  alignment: Alignment.centerRight,
+                  child: _BotaoConfiguracoes(),
                 ),
-                const SizedBox(height: 28),
-                const SectionLabel('Acessibilidade'),
-                const SizedBox(height: 12),
-                const _TamanhoLetra(),
-                const SizedBox(height: 12),
-                const _NotificacoesToggle(),
-                const SizedBox(height: 32),
-                const SectionLabel('Meus cupons'),
-                const SizedBox(height: 12),
-                redemptions.when(
-                  loading: () => const Padding(
-                      padding: EdgeInsets.only(top: 16), child: LoadingView()),
-                  error: (_, _) => const Text('Erro ao carregar cupons.'),
-                  data: (list) {
-                    if (list.isEmpty) {
-                      return const _VazioLinha(
-                          texto: 'Você ainda não resgatou nenhum prêmio.');
-                    }
-                    return Column(
-                      children: [
-                        for (final r in list) ...[
-                          _CupomTile(r: r),
-                          const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: _Header(user: u, isSub: isSub),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 18),
+                  child: _StatsRow(cupons: cupons.length, socio: isSub),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: _IndicarCard(indicacoes: u.indicacoes),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 30),
+                  child: SectionLabel('Meus cupons'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: redemptions.when(
+                    loading: () => const Padding(
+                        padding: EdgeInsets.only(top: 16),
+                        child: LoadingView()),
+                    error: (_, _) => const Text('Erro ao carregar cupons.'),
+                    data: (list) {
+                      if (list.isEmpty) {
+                        return const _VazioLinha(
+                            texto: 'Você ainda não resgatou nenhum prêmio.');
+                      }
+                      return Column(
+                        children: [
+                          for (final r in list) ...[
+                            _CupomTile(r: r),
+                            const SizedBox(height: 12),
+                          ],
                         ],
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 28),
-                const SectionLabel('Conta'),
-                const SizedBox(height: 12),
-                _MenuTile(
-                    icone: Icons.person_outline,
-                    titulo: 'Editar dados',
-                    onTap: () {}),
-                _MenuTile(
-                    icone: Icons.location_on_outlined,
-                    titulo: 'Endereço de entrega',
-                    subtitulo: u.endereco ?? 'Não informado',
-                    onTap: () {}),
-                _MenuTile(
-                    icone: Icons.cake_outlined,
-                    titulo: 'Aniversário',
-                    subtitulo: u.nascimento != null
-                        ? DateFormat("d 'de' MMMM", 'pt_BR').format(u.nascimento!)
-                        : 'Não informado',
-                    onTap: () {}),
-                _MenuTile(
-                    icone: Icons.notifications_none_rounded,
-                    titulo: 'Notificações',
-                    onTap: () => context.go('/notificacoes')),
-                _MenuTile(
-                    icone: Icons.description_outlined,
-                    titulo: 'Termos e privacidade',
-                    onTap: () {}),
-                const SizedBox(height: 24),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    if (kDemo) {
-                      context.go('/login');
-                      return;
-                    }
-                    ref.read(firebaseAuthProvider).signOut();
-                  },
-                  icon: const Icon(Icons.logout, size: 18),
-                  label: const Text('Sair'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: PandaColors.vermelhoAcento,
-                    side: const BorderSide(color: PandaColors.vermelhoAcento),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Center(
-                  child: Text('Clube Panda · Tio Panda',
-                      style: TextStyle(
-                          color: PandaColors.cinzaTexto, fontSize: 12)),
-                ),
-              ],
+              ]),
             );
           },
         ),
@@ -124,101 +89,106 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-/// Controle de tamanho da letra (A− / A+) — acessibilidade pra todas as idades.
-class _TamanhoLetra extends ConsumerWidget {
-  const _TamanhoLetra();
+/// Engrenagem que abre as configurações. Mesmo formato do sino da Home,
+/// pra o usuário reconhecer o padrão de "botão de canto".
+class _BotaoConfiguracoes extends StatelessWidget {
+  const _BotaoConfiguracoes();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scale = ref.watch(textScaleProvider);
-
-    void ajustar(double delta) {
-      ref.read(textScaleProvider.notifier).ajustar(delta);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: PandaColors.laranjaSuave,
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: const Icon(Icons.text_fields_rounded,
-                size: 20, color: PandaColors.laranja),
+    return Material(
+      color: isDark ? PandaColors.cardDark : PandaColors.branco,
+      borderRadius: PandaRadius.bsm,
+      child: InkWell(
+        onTap: () => context.go('/configuracoes'),
+        borderRadius: PandaRadius.bsm,
+        child: Ink(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: PandaRadius.bsm,
+            border: Border.all(
+                color:
+                    isDark ? PandaColors.hairlineDark : PandaColors.hairline),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Tamanho da letra',
-                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(rotuloTamanho(scale),
-                    style: const TextStyle(
-                        color: PandaColors.cinzaTexto, fontSize: 13)),
-              ],
-            ),
-          ),
-          _AjusteBtn(
-            texto: 'A',
-            fontSize: 14,
-            ativo: scale > kMinTextScale,
-            onTap: () => ajustar(-kStepTextScale),
-          ),
-          const SizedBox(width: 10),
-          _AjusteBtn(
-            texto: 'A',
-            fontSize: 20,
-            ativo: scale < kMaxTextScale,
-            onTap: () => ajustar(kStepTextScale),
-          ),
-        ],
+          child: const Icon(Icons.settings_outlined,
+              size: 21, color: PandaColors.laranja),
+        ),
       ),
     );
   }
 }
 
-class _AjusteBtn extends StatelessWidget {
-  const _AjusteBtn(
-      {required this.texto,
-      required this.fontSize,
-      required this.ativo,
-      required this.onTap});
-  final String texto;
-  final double fontSize;
-  final bool ativo;
-  final VoidCallback onTap;
+/// Indicar amigos não é configuração — é o que faz o Clube crescer.
+/// Fica em destaque no perfil em vez de virar mais um item de lista.
+class _IndicarCard extends StatelessWidget {
+  const _IndicarCard({required this.indicacoes});
+  final int indicacoes;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
-      color: ativo ? PandaColors.laranja : PandaColors.laranja.withValues(alpha: 0.3),
-      borderRadius: BorderRadius.circular(12),
+      color: isDark ? PandaColors.cardDark : PandaColors.laranjaSuave,
+      borderRadius: PandaRadius.bmd,
       child: InkWell(
-        onTap: ativo ? onTap : null,
-        borderRadius: BorderRadius.circular(12),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Center(
-            child: Text(texto,
-                textScaler: TextScaler.noScaling,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w800)),
+        onTap: () => _abrirIndicar(context),
+        borderRadius: PandaRadius.bmd,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: PandaRadius.bmd,
+            border: Border.all(
+                color: isDark
+                    ? PandaColors.laranja.withValues(alpha: 0.35)
+                    : Colors.transparent),
+          ),
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: PandaColors.laranja,
+                  borderRadius: PandaRadius.bsm,
+                ),
+                child: const Icon(Icons.group_add_rounded,
+                    size: 22, color: Colors.white),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Indique um amigo',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15.5,
+                            height: 1.25,
+                            color: isDark
+                                ? PandaColors.branco
+                                : PandaColors.preto)),
+                    const SizedBox(height: 4),
+                    Text(
+                      indicacoes > 0
+                          ? '$indicacoes ${indicacoes == 1 ? 'indicação' : 'indicações'} até agora'
+                          : 'Compartilhe e ganhe benefícios',
+                      style: TextStyle(
+                          fontSize: 13,
+                          height: 1.3,
+                          color: isDark
+                              ? PandaColors.cinzaTexto
+                              : PandaColors.laranjaEscuro),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right,
+                  color: isDark
+                      ? PandaColors.cinzaTexto
+                      : PandaColors.laranjaEscuro),
+            ],
           ),
         ),
       ),
@@ -226,55 +196,96 @@ class _AjusteBtn extends StatelessWidget {
   }
 }
 
-/// Liga/desliga notificações (push). Persistido em shared_preferences.
-class _NotificacoesToggle extends ConsumerWidget {
-  const _NotificacoesToggle();
+/// Avatar do perfil com edição — toca, escolhe foto, sobe pro Storage e
+/// atualiza fotoUrl no doc do usuário.
+class _AvatarEditavel extends ConsumerStatefulWidget {
+  const _AvatarEditavel({required this.user});
+  final AppUser user;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final ativas = ref.watch(notificationsEnabledProvider);
+  ConsumerState<_AvatarEditavel> createState() => _AvatarEditavelState();
+}
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
-      ),
-      child: Row(
+class _AvatarEditavelState extends ConsumerState<_AvatarEditavel> {
+  bool _enviando = false;
+
+  Future<void> _trocarFoto() async {
+    if (_enviando) return;
+    if (kDemo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Troca de foto desativada no modo demo')),
+      );
+      return;
+    }
+    final img = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 800,
+      imageQuality: 85,
+    );
+    if (img == null) return;
+    setState(() => _enviando = true);
+    try {
+      final bytes = await img.readAsBytes();
+      final uid = widget.user.uid;
+      final ref_ = ref
+          .read(storageProvider)
+          .ref('users/$uid/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await ref_.putData(
+          bytes, SettableMetadata(contentType: 'image/jpeg'));
+      final url = await ref_.getDownloadURL();
+      await ref
+          .read(firestoreProvider)
+          .collection('users')
+          .doc(uid)
+          .update({'fotoUrl': url});
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Não deu pra atualizar a foto.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final u = widget.user;
+    return GestureDetector(
+      onTap: _trocarFoto,
+      child: Stack(
+        alignment: Alignment.bottomRight,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: PandaColors.laranjaSuave,
-              borderRadius: BorderRadius.circular(11),
+              shape: BoxShape.circle,
+              border: Border.all(color: PandaColors.laranja, width: 2),
             ),
-            child: const Icon(Icons.notifications_active_rounded,
-                size: 20, color: PandaColors.laranja),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Receber notificações',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(ativas ? 'Promoções e avisos ligados' : 'Desligado',
-                    style: const TextStyle(
-                        color: PandaColors.cinzaTexto, fontSize: 13)),
-              ],
+            child: CircleAvatar(
+              radius: 42,
+              backgroundColor: PandaColors.laranjaSuave,
+              backgroundImage:
+                  u.fotoUrl != null ? NetworkImage(u.fotoUrl!) : null,
+              child: _enviando
+                  ? const CircularProgressIndicator(
+                      color: PandaColors.laranja, strokeWidth: 2)
+                  : (u.fotoUrl == null
+                      ? const Text('🐼', style: TextStyle(fontSize: 36))
+                      : null),
             ),
           ),
-          Switch(
-            value: ativas,
-            activeThumbColor: PandaColors.laranja,
-            onChanged: (v) =>
-                ref.read(notificationsEnabledProvider.notifier).definir(v),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: PandaColors.laranja,
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: Theme.of(context).scaffoldBackgroundColor, width: 2),
+            ),
+            child: const Icon(Icons.photo_camera_rounded,
+                color: Colors.white, size: 16),
           ),
         ],
       ),
@@ -282,7 +293,7 @@ class _NotificacoesToggle extends ConsumerWidget {
   }
 }
 
-/// Cabeçalho — avatar grande, nome, e-mail, status de sócio.
+/// Cabeçalho — avatar grande (editável), nome, e-mail, status de sócio.
 class _Header extends StatelessWidget {
   const _Header({required this.user, required this.isSub});
   final AppUser user;
@@ -292,22 +303,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: PandaColors.laranja, width: 2),
-          ),
-          child: CircleAvatar(
-            radius: 42,
-            backgroundColor: PandaColors.laranjaSuave,
-            backgroundImage:
-                user.fotoUrl != null ? NetworkImage(user.fotoUrl!) : null,
-            child: user.fotoUrl == null
-                ? const Text('🐼', style: TextStyle(fontSize: 36))
-                : null,
-          ),
-        ),
+        _AvatarEditavel(user: user),
         const SizedBox(height: 14),
         Text(user.nome,
             style: Theme.of(context).textTheme.headlineSmall,
@@ -347,11 +343,9 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Linha de estatísticas: pontos, cupons, plano.
+/// Linha de estatísticas: cupons e plano.
 class _StatsRow extends StatelessWidget {
-  const _StatsRow(
-      {required this.pontos, required this.cupons, required this.socio});
-  final int pontos;
+  const _StatsRow({required this.cupons, required this.socio});
   final int cupons;
   final bool socio;
 
@@ -359,8 +353,6 @@ class _StatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Stat(valor: '$pontos', label: 'Pontos', icone: Icons.star_rounded),
-        const SizedBox(width: 12),
         _Stat(
             valor: '$cupons',
             label: 'Cupons',
@@ -411,77 +403,6 @@ class _Stat extends StatelessWidget {
   }
 }
 
-class _MenuTile extends StatelessWidget {
-  const _MenuTile({
-    required this.icone,
-    required this.titulo,
-    this.subtitulo,
-    required this.onTap,
-  });
-
-  final IconData icone;
-  final String titulo;
-  final String? subtitulo;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Ink(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color:
-                      isDark ? PandaColors.hairlineDark : PandaColors.hairline),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: PandaColors.laranjaSuave,
-                    borderRadius: BorderRadius.circular(11),
-                  ),
-                  child: Icon(icone, size: 19, color: PandaColors.laranja),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(titulo,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 15)),
-                      if (subtitulo != null) ...[
-                        const SizedBox(height: 2),
-                        Text(subtitulo!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: PandaColors.cinzaTexto, fontSize: 13)),
-                      ],
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right, color: PandaColors.cinzaTexto),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _CupomTile extends StatelessWidget {
   const _CupomTile({required this.r});
@@ -502,54 +423,90 @@ class _CupomTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final (label, cor) = _status(r.status);
+    final data = r.criadoEm != null
+        ? DateFormat('dd/MM/yyyy').format(r.criadoEm!)
+        : null;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: PandaRadius.bmd,
         border: Border.all(
             color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
               color: PandaColors.laranjaSuave,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: PandaRadius.bsm,
             ),
             child: const Icon(Icons.confirmation_number_outlined,
                 color: PandaColors.laranja, size: 22),
           ),
           const SizedBox(width: 14),
+          // Tudo empilhado: título ocupa a largura inteira, código na linha
+          // dele, data e selo embaixo. Nada disputa espaço lateral com o
+          // título — sobrevive ao "tamanho da letra: grande".
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(r.rewardTitulo,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(r.codigo,
-                    style: const TextStyle(
-                        color: PandaColors.cinzaTexto,
-                        fontSize: 13,
-                        letterSpacing: 1)),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        height: 1.25)),
+                const SizedBox(height: 4),
+                Text(
+                  r.codigo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: PandaColors.cinzaTexto,
+                      fontSize: 12.5,
+                      letterSpacing: 0.8,
+                      height: 1.3),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cor.withValues(alpha: 0.14),
+                        borderRadius: PandaRadius.bxs,
+                      ),
+                      child: Text(label,
+                          style: TextStyle(
+                              color: cor,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11.5,
+                              height: 1.25)),
+                    ),
+                    if (data != null) ...[
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(data,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: PandaColors.cinzaTexto,
+                                fontSize: 12.5,
+                                height: 1.25)),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: cor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(label,
-                style: TextStyle(
-                    color: cor, fontWeight: FontWeight.w700, fontSize: 12)),
           ),
         ],
       ),
@@ -569,3 +526,159 @@ class _VazioLinha extends StatelessWidget {
     );
   }
 }
+
+
+void _abrirIndicar(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    builder: (_) => const _IndicarSheet(),
+  );
+}
+
+/// Indique um amigo — mostra o código de indicação, copia e compartilha.
+class _IndicarSheet extends ConsumerStatefulWidget {
+  const _IndicarSheet();
+
+  @override
+  ConsumerState<_IndicarSheet> createState() => _IndicarSheetState();
+}
+
+class _IndicarSheetState extends ConsumerState<_IndicarSheet> {
+  String? _codigo;
+  bool _carregando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  Future<void> _carregar() async {
+    if (kDemo) {
+      setState(() {
+        _codigo = 'PANDA00';
+        _carregando = false;
+      });
+      return;
+    }
+    try {
+      final res = await ref
+          .read(functionsProvider)
+          .httpsCallable('ensureReferralCode')
+          .call();
+      if (mounted) {
+        setState(() {
+          _codigo = res.data['code'] as String?;
+          _carregando = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _carregando = false);
+    }
+  }
+
+  String get _mensagem =>
+      'Entra no Clube Panda comigo! Usa meu código *$_codigo* no cadastro. 🐼🍣';
+
+  Future<void> _whatsapp() async {
+    final uri = Uri.parse(
+        'https://wa.me/?text=${Uri.encodeComponent(_mensagem)}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _copiar() {
+    if (_codigo == null) return;
+    Clipboard.setData(ClipboardData(text: _codigo!));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Código copiado!')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 8,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Icon(Icons.group_add_rounded,
+              color: PandaColors.laranja, size: 44),
+          const SizedBox(height: 12),
+          Text('Indique um amigo',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 8),
+          const Text(
+            'Compartilhe seu código. Quando seu amigo virar sócio, vocês dois ganham um benefício.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: PandaColors.cinzaTexto, height: 1.4),
+          ),
+          const SizedBox(height: 24),
+          if (_carregando)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: LoadingView(),
+            )
+          else if (_codigo == null)
+            const Text('Não deu pra gerar o código agora. Tente de novo.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: PandaColors.vermelhoAcento))
+          else ...[
+            GestureDetector(
+              onTap: _copiar,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                decoration: BoxDecoration(
+                  color: PandaColors.laranjaSuave,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Text(_codigo!,
+                        style: const TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 4,
+                            color: PandaColors.laranjaEscuro)),
+                    const SizedBox(height: 4),
+                    const Text('Toque pra copiar',
+                        style: TextStyle(
+                            fontSize: 12, color: PandaColors.laranjaEscuro)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _whatsapp,
+              icon: const Icon(Icons.chat_rounded, size: 20),
+              label: const Text('Compartilhar no WhatsApp'),
+              style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52)),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _copiar,
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copiar código'),
+              style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+

@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
+import '../../core/restaurante.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/colors.dart';
+import '../../core/theme/dimens.dart';
 import '../../core/widgets/panda_logo.dart';
 import '../../core/widgets/state_views.dart';
+import '../../core/widgets/entrada.dart';
 import '../../core/models/models.dart';
 
-// Contato do restaurante. TODO: trocar pelos dados reais do Tio Panda.
-const String _kTelefone = '551430000000'; // fixo, formato tel:
-const String _kWhatsapp = '5514990000000'; // com DDI 55 + DDD
-const String _kEndereco = 'Tio Panda restaurante';
+final _moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+
+/// Saudação conforme a hora — detalhe pequeno que faz o app parecer atento.
+String _saudacao() {
+  final h = DateTime.now().hour;
+  if (h < 12) return 'Bom dia';
+  if (h < 18) return 'Boa tarde';
+  return 'Boa noite';
+}
 
 Future<void> _abrirUrl(String url) async {
   final uri = Uri.parse(url);
@@ -49,85 +59,125 @@ class HomeScreen extends ConsumerWidget {
           onRefresh: () async => ref.invalidate(promotionsProvider),
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-            children: [
+            children: escalonar([
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const PandaLogo(size: 40, showWordmark: false),
-                  Row(
-                    children: [
-                      const _SinoNotificacoes(),
-                      const SizedBox(width: 12),
-                      user.when(
-                        data: (u) => PointsBadge(pontos: u?.pontos ?? 0),
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, _) => const SizedBox.shrink(),
-                      ),
-                    ],
-                  ),
+                  const _SinoNotificacoes(),
                 ],
               ),
-              const SizedBox(height: 26),
-              Text('Olá, $primeiroNome',
-                  style: Theme.of(context).textTheme.headlineLarge),
-              const SizedBox(height: 8),
-              if (isSub)
-                const _StatusSocio()
-              else
-                Text('Que tal um japa hoje?',
-                    style: const TextStyle(
-                        color: PandaColors.cinzaTexto, fontSize: 15)),
-              const SizedBox(height: 24),
-              if (!isSub) ...[
-                const _AssineBanner(),
-                const SizedBox(height: 28),
-              ],
-              const _CarteirinhaCard(),
-              const SizedBox(height: 16),
-              _AtalhosRow(),
-              const SizedBox(height: 32),
-              const SectionLabel('Destaques do cardápio'),
-              const SizedBox(height: 16),
-              const _DestaquesRow(),
-              const SizedBox(height: 32),
-              const SectionLabel('Promoções'),
-              const SizedBox(height: 16),
-              promos.when(
-                loading: () => const Padding(
-                    padding: EdgeInsets.only(top: 24), child: LoadingView()),
-                error: (e, _) => ErrorView(
-                    mensagem: 'Não deu pra carregar as promoções.',
-                    onRetry: () => ref.invalidate(promotionsProvider)),
-                data: (list) {
-                  final visiveis =
-                      list.where((p) => !p.apenasAssinantes || isSub).toList();
-                  if (visiveis.isEmpty) {
-                    return const EmptyView(
-                      mensagem:
-                          'Nenhuma promoção agora.\nVolte logo — tem novidade toda semana.',
-                      icone: Icons.local_offer_outlined,
-                    );
-                  }
-                  return Column(
-                    children: [
-                      _PromoHero(promo: visiveis.first),
-                      for (final p in visiveis.skip(1)) ...[
-                        const SizedBox(height: 14),
-                        _PromoCard(promo: p),
-                      ],
-                    ],
-                  );
-                },
+              Padding(
+                padding: const EdgeInsets.only(top: 26),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Único ponto em serifa: vira assinatura da marca em vez
+                    // de tema geral do app.
+                    Text('${_saudacao()}, $primeiroNome',
+                        style: AppTheme.assinatura(
+                            Theme.of(context).textTheme.headlineLarge)),
+                    const SizedBox(height: 8),
+                    if (isSub)
+                      const _StatusSocio()
+                    else
+                      const Text('Que tal um japa hoje?',
+                          style: TextStyle(
+                              color: PandaColors.cinzaTexto, fontSize: 15)),
+                  ],
+                ),
               ),
-              const SizedBox(height: 34),
-              const SectionLabel('Como funciona'),
-              const SizedBox(height: 16),
-              const _ComoFunciona(),
-              const SizedBox(height: 34),
-              const SectionLabel('Fale com a gente'),
-              const SizedBox(height: 16),
-              const _FaleConosco(),
-            ],
+              if (isSub)
+                const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: _EconomiaCard(),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: _AssineBanner(),
+                ),
+              const Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: _CarteirinhaCard(),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: _AtalhosRow(),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    SectionLabel('Destaques do cardápio'),
+                    SizedBox(height: 16),
+                    _DestaquesRow(),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SectionLabel('Promoções'),
+                    const SizedBox(height: 16),
+                    promos.when(
+                      loading: () => const Padding(
+                          padding: EdgeInsets.only(top: 24),
+                          child: LoadingView()),
+                      error: (e, _) => ErrorView(
+                          mensagem: 'Não deu pra carregar as promoções.',
+                          onRetry: () => ref.invalidate(promotionsProvider)),
+                      data: (list) {
+                        final visiveis = list
+                            .where((p) => !p.apenasAssinantes || isSub)
+                            .toList();
+                        if (visiveis.isEmpty) {
+                          return const EmptyView(
+                            mensagem:
+                                'Nenhuma promoção agora.\nVolte logo — tem novidade toda semana.',
+                            icone: Icons.local_offer_outlined,
+                          );
+                        }
+                        return Column(
+                          children: [
+                            _PromoHero(promo: visiveis.first),
+                            for (final p in visiveis.skip(1)) ...[
+                              const SizedBox(height: 14),
+                              _PromoCard(promo: p),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 34),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionLabel('Como funciona'),
+                    SizedBox(height: 16),
+                    _ComoFunciona(),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 34),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionLabel('Fale com a gente'),
+                    SizedBox(height: 16),
+                    _FaleConosco(),
+                  ],
+                ),
+              ),
+            ]),
           ),
         ),
       ),
@@ -145,13 +195,13 @@ class _SinoNotificacoes extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => context.go('/notificacoes'),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: PandaRadius.bsm,
       child: Container(
         width: 42,
         height: 42,
         decoration: BoxDecoration(
           color: isDark ? PandaColors.cardDark : PandaColors.branco,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: PandaRadius.bsm,
           border: Border.all(
               color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
         ),
@@ -170,7 +220,7 @@ class _SinoNotificacoes extends ConsumerWidget {
                       const BoxConstraints(minWidth: 15, minHeight: 15),
                   decoration: BoxDecoration(
                     color: PandaColors.vermelhoAcento,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: PandaRadius.bxs,
                     border: Border.all(
                         color: isDark
                             ? PandaColors.fundoDark
@@ -202,9 +252,9 @@ class _ComoFunciona extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const passos = [
-      (Icons.qr_code_2_rounded, 'Mostre o app', 'Ao pagar, mostre seu app no caixa.'),
-      (Icons.star_rounded, 'Junte pontos', 'Cada visita soma pontos na sua conta.'),
-      (Icons.card_giftcard_rounded, 'Troque por prêmios', 'Use os pontos em comidas e brindes.'),
+      (Icons.workspace_premium_outlined, 'Seja sócio', 'Entre no Clube e libere os prêmios.'),
+      (Icons.card_giftcard_rounded, 'O restaurante libera prêmios', 'Pratos e brindes com prazo pra resgatar.'),
+      (Icons.qr_code_2_rounded, 'Mostre o QR no caixa', 'O atendente confirma e você recebe na hora.'),
     ];
     return Column(
       children: [
@@ -243,7 +293,7 @@ class _PassoLinha extends StatelessWidget {
           height: 46,
           decoration: BoxDecoration(
             color: PandaColors.laranjaSuave,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: PandaRadius.bsm,
           ),
           child: Icon(icone, color: PandaColors.laranja, size: 24),
         ),
@@ -279,7 +329,7 @@ class _FaleConosco extends StatelessWidget {
           child: _ContatoBtn(
             icone: Icons.phone_rounded,
             label: 'Ligar',
-            onTap: () => _abrirUrl('tel:$_kTelefone'),
+            onTap: () => _abrirUrl('tel:${Restaurante.telefone}'),
           ),
         ),
         const SizedBox(width: 12),
@@ -287,7 +337,7 @@ class _FaleConosco extends StatelessWidget {
           child: _ContatoBtn(
             icone: Icons.chat_rounded,
             label: 'WhatsApp',
-            onTap: () => _abrirUrl('https://wa.me/$_kWhatsapp'),
+            onTap: () => _abrirUrl('https://wa.me/${Restaurante.whatsapp}'),
           ),
         ),
         const SizedBox(width: 12),
@@ -296,7 +346,7 @@ class _FaleConosco extends StatelessWidget {
             icone: Icons.location_on_rounded,
             label: 'Como chegar',
             onTap: () => _abrirUrl(
-                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(_kEndereco)}'),
+                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(Restaurante.endereco)}'),
           ),
         ),
       ],
@@ -316,13 +366,13 @@ class _ContatoBtn extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: isDark ? PandaColors.cardDark : PandaColors.branco,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: PandaRadius.bmd,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: PandaRadius.bmd,
         child: Ink(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: PandaRadius.bmd,
             border: Border.all(
                 color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
           ),
@@ -353,7 +403,7 @@ class _StatusSocio extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: PandaColors.verdeSucesso.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: PandaRadius.bsm,
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -371,65 +421,158 @@ class _StatusSocio extends StatelessWidget {
   }
 }
 
+/// O número que vende o Clube: quanto o sócio já economizou em prêmios.
+/// Card escuro pra contrastar com o papel quente — é o destaque da tela.
+class _EconomiaCard extends ConsumerWidget {
+  const _EconomiaCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final economia = ref.watch(economiaProvider);
+    if (economia.total <= 0) return const SizedBox.shrink();
+
+    // No claro o card escuro salta do papel quente. No escuro ele sumiria
+    // no fundo, então sobe pra superfície de card e ganha borda laranja.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(22, 20, 22, 20),
+      decoration: BoxDecoration(
+        color: isDark ? PandaColors.cardDark : PandaColors.preto,
+        borderRadius: PandaRadius.blg,
+        border: isDark
+            ? Border.all(color: PandaColors.laranja.withValues(alpha: 0.35))
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 2,
+                color: PandaColors.laranja,
+              ),
+              const SizedBox(width: 10),
+              Text('VOCÊ JÁ ECONOMIZOU',
+                  style: TextStyle(
+                      fontSize: 11,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.55))),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // Contador sobe do zero — dá vida ao número sem parecer enfeite.
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: economia.total),
+            duration: const Duration(milliseconds: 1100),
+            curve: Curves.easeOutCubic,
+            builder: (_, valor, _) => Text(
+              _moeda.format(valor),
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    color: PandaColors.laranja,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                  ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.card_giftcard_rounded,
+                  size: 15, color: Colors.white.withValues(alpha: 0.6)),
+              const SizedBox(width: 6),
+              Text(
+                '${economia.resgates} ${economia.resgates == 1 ? 'prêmio resgatado' : 'prêmios resgatados'}',
+                style: TextStyle(
+                    fontSize: 13, color: Colors.white.withValues(alpha: 0.75)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Cartão de acesso rápido à carteirinha digital (mostrar no caixa).
 class _CarteirinhaCard extends StatelessWidget {
   const _CarteirinhaCard();
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: () => context.go('/carteirinha'),
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [PandaColors.laranja, PandaColors.laranjaEscuro],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: PandaColors.laranja.withValues(alpha: 0.35),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
+    // A sombra fica FORA do Material. Antes ela vinha junto do `Ink`, com
+    // offset de 10px pra baixo e sem spread negativo: escapava por trás dos
+    // cantos de baixo e desenhava um degrau reto na base do card.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: PandaRadius.blg,
+        boxShadow: [
+          BoxShadow(
+            color: PandaColors.laranja.withValues(alpha: 0.30),
+            blurRadius: 22,
+            // spread negativo encolhe a sombra: ela nunca ultrapassa a
+            // silhueta arredondada do card.
+            spreadRadius: -6,
+            offset: const Offset(0, 8),
           ),
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: const Icon(Icons.qr_code_2_rounded,
-                    color: Colors.white, size: 30),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: PandaRadius.blg,
+        // Clipa o gradiente e o splash exatamente na curva.
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.go('/carteirinha'),
+          child: Ink(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [PandaColors.laranja, PandaColors.laranjaEscuro],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Minha carteirinha',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w800)),
-                    SizedBox(height: 2),
-                    Text('Mostre no caixa e junte pontos',
-                        style: TextStyle(color: Colors.white, fontSize: 13)),
-                  ],
+              borderRadius: PandaRadius.blg,
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: PandaRadius.bsm,
+                  ),
+                  child: const Icon(Icons.qr_code_2_rounded,
+                      color: Colors.white, size: 30),
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: Colors.white),
-            ],
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Minha carteirinha',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.5,
+                              height: 1.25,
+                              fontWeight: FontWeight.w800)),
+                      SizedBox(height: 4),
+                      Text('Mostre no caixa pra se identificar',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              height: 1.3)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.white),
+              ],
+            ),
           ),
         ),
       ),
@@ -477,13 +620,13 @@ class _Atalho extends StatelessWidget {
     return Expanded(
       child: Material(
         color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: PandaRadius.bmd,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: PandaRadius.bmd,
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: PandaRadius.bmd,
               border: Border.all(
                   color:
                       isDark ? PandaColors.hairlineDark : PandaColors.hairline),
@@ -537,7 +680,7 @@ class _DestaqueCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: PandaRadius.bmd,
             child: SizedBox(
               height: 132,
               width: double.infinity,
@@ -570,24 +713,32 @@ class _AssineBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: PandaColors.laranjaSuave,
-        borderRadius: BorderRadius.circular(20),
+        // Superfície do tema, não creme fixo: no escuro virava mancha clara.
+        color: isDark ? PandaColors.cardDark : PandaColors.laranjaSuave,
+        borderRadius: PandaRadius.blg,
+        border: Border.all(
+            color: isDark
+                ? PandaColors.laranja.withValues(alpha: 0.35)
+                : Colors.transparent),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Entre pro Clube',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(color: PandaColors.laranjaEscuro)),
-          const SizedBox(height: 6),
-          const Text('Rodízios, prêmios e promoções exclusivas todo mês.',
-              style: TextStyle(color: PandaColors.preto, height: 1.4)),
-          const SizedBox(height: 18),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color:
+                      isDark ? PandaColors.laranja : PandaColors.laranjaEscuro,
+                  height: 1.25)),
+          const SizedBox(height: 8),
+          Text('Rodízios, prêmios e promoções exclusivas todo mês.',
+              style: TextStyle(
+                  color: isDark ? PandaColors.branco : PandaColors.preto,
+                  height: 1.4)),
+          const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () => context.go('/planos'),
             style:
@@ -613,7 +764,7 @@ class _PromoHero extends StatelessWidget {
 
   Widget _badge(Color bg, Color fg) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: bg, borderRadius: PandaRadius.bxs),
         child: Text('EXCLUSIVO CLUBE',
             style: TextStyle(
                 color: fg,
@@ -624,7 +775,7 @@ class _PromoHero extends StatelessWidget {
 
   Widget _comImagem(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: PandaRadius.blg,
       child: Stack(
         children: [
           SizedBox(
@@ -681,7 +832,7 @@ class _PromoHero extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: PandaColors.laranjaSuave,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: PandaRadius.blg,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,7 +844,7 @@ class _PromoHero extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: PandaColors.laranja,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: PandaRadius.bsm,
                 ),
                 child: const Icon(Icons.local_fire_department_rounded,
                     color: Colors.white, size: 24),
@@ -732,7 +883,7 @@ class _PromoCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: PandaRadius.bmd,
         border: Border.all(
             color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
       ),
@@ -744,7 +895,7 @@ class _PromoCard extends StatelessWidget {
             height: 56,
             decoration: BoxDecoration(
               color: PandaColors.laranjaSuave,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: PandaRadius.bsm,
             ),
             clipBehavior: Clip.antiAlias,
             child: promo.imagem != null

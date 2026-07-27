@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/colors.dart';
@@ -32,26 +33,29 @@ class MainShell extends StatelessWidget {
             ),
           ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: index,
-          onTap: (i) => context.go(_tabs[i]),
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Início'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.card_giftcard_outlined),
-              activeIcon: Icon(Icons.card_giftcard),
-              label: 'Prêmios'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.workspace_premium_outlined),
-              activeIcon: Icon(Icons.workspace_premium),
-              label: 'Planos'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: 'Perfil'),
+        child: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: (i) {
+            HapticFeedback.selectionClick();
+            context.go(_tabs[i]);
+          },
+          destinations: const [
+            NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'Início'),
+            NavigationDestination(
+                icon: Icon(Icons.card_giftcard_outlined),
+                selectedIcon: Icon(Icons.card_giftcard_rounded),
+                label: 'Prêmios'),
+            NavigationDestination(
+                icon: Icon(Icons.workspace_premium_outlined),
+                selectedIcon: Icon(Icons.workspace_premium_rounded),
+                label: 'Planos'),
+            NavigationDestination(
+                icon: Icon(Icons.person_outline_rounded),
+                selectedIcon: Icon(Icons.person_rounded),
+                label: 'Perfil'),
           ],
         ),
       ),

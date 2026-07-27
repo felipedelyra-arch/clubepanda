@@ -11,9 +11,10 @@ class AppUser {
     this.telefone = '',
     this.endereco,
     this.fotoUrl,
-    this.pontos = 0,
     this.role,
     this.nascimento,
+    this.codigoIndicacao,
+    this.indicacoes = 0,
   });
 
   final String uid;
@@ -22,9 +23,14 @@ class AppUser {
   final String telefone;
   final String? endereco;
   final String? fotoUrl;
-  final int pontos;
   final String? role;
   final DateTime? nascimento;
+
+  /// Código pra indicar amigos (gerado sob demanda no backend).
+  final String? codigoIndicacao;
+
+  /// Quantos amigos já foram indicados por este usuário.
+  final int indicacoes;
 
   bool get isAdmin => role == 'admin';
 
@@ -37,9 +43,10 @@ class AppUser {
       telefone: m['telefone'] ?? '',
       endereco: m['endereco'],
       fotoUrl: m['fotoUrl'],
-      pontos: (m['pontos'] ?? 0) as int,
       role: m['role'],
       nascimento: (m['nascimento'] as Timestamp?)?.toDate(),
+      codigoIndicacao: m['codigoIndicacao'],
+      indicacoes: (m['indicacoes'] ?? 0) as int,
     );
   }
 }
@@ -147,22 +154,31 @@ class Reward {
     required this.titulo,
     required this.descricao,
     this.imagem,
-    this.custoPontos = 0,
     this.tipo = 'cupom',
     this.estoque = 0,
-    this.apenasAssinantes = false,
+    this.resgatavelAte,
+    this.valor = 0,
   });
 
   final String id;
   final String titulo;
   final String descricao;
   final String? imagem;
-  final int custoPontos;
   final String tipo; // rodizio | prato | sobremesa | cupom
   final int estoque;
-  final bool apenasAssinantes;
 
-  bool get disponivel => estoque > 0;
+  /// Quanto o prêmio vale em reais (preço de cardápio). Alimenta o
+  /// "você já economizou" na Home. Zero = não entra na conta.
+  final double valor;
+
+  /// Prazo limite pra resgatar (definido pelo dono). Nulo = sem prazo.
+  final DateTime? resgatavelAte;
+
+  /// Janela de resgate ainda aberta?
+  bool get noPrazo =>
+      resgatavelAte == null || !DateTime.now().isAfter(resgatavelAte!);
+
+  bool get disponivel => estoque > 0 && noPrazo;
 
   factory Reward.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data() ?? {};
@@ -171,10 +187,10 @@ class Reward {
       titulo: m['titulo'] ?? '',
       descricao: m['descricao'] ?? '',
       imagem: m['imagem'],
-      custoPontos: (m['custoPontos'] ?? 0) as int,
       tipo: m['tipo'] ?? 'cupom',
       estoque: (m['estoque'] ?? 0) as int,
-      apenasAssinantes: m['apenasAssinantes'] ?? false,
+      resgatavelAte: (m['resgatavelAte'] as Timestamp?)?.toDate(),
+      valor: (m['valor'] ?? 0).toDouble(),
     );
   }
 }
@@ -188,6 +204,7 @@ class Redemption {
     required this.codigo,
     required this.status,
     this.criadoEm,
+    this.valor = 0,
   });
 
   final String id;
@@ -197,6 +214,10 @@ class Redemption {
   final String codigo;
   final String status; // disponivel | usado | expirado
   final DateTime? criadoEm;
+
+  /// Valor do prêmio no momento do resgate (congelado). Se zero, o app
+  /// cai no valor atual do reward correspondente.
+  final double valor;
 
   factory Redemption.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data() ?? {};
@@ -208,6 +229,7 @@ class Redemption {
       codigo: m['codigo'] ?? '',
       status: m['status'] ?? 'disponivel',
       criadoEm: (m['criadoEm'] as Timestamp?)?.toDate(),
+      valor: (m['valor'] ?? 0).toDouble(),
     );
   }
 }

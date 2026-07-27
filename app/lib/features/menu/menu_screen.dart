@@ -25,7 +25,7 @@ class MenuScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
           children: [
             const Text(
-              'Nossos destaques. Sócios acumulam pontos em todo pedido.',
+              'Nossos destaques. Sócios têm prêmios e promoções exclusivas.',
               style: TextStyle(
                   color: PandaColors.cinzaTexto, fontSize: 14.5, height: 1.4),
             ),

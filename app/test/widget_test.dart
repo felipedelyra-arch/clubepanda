@@ -6,10 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:clube_panda/core/widgets/panda_logo.dart';
 
 void main() {
-  testWidgets('PandaLogo renderiza wordmark', (WidgetTester tester) async {
+  testWidgets('PandaLogo renderiza sem erro', (WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: PandaLogo())),
+      const MaterialApp(home: Scaffold(body: PandaLogo(size: 48))),
     );
-    expect(find.text('Clube Panda'), findsOneWidget);
+    // A logo virou uma imagem única (o nome já está na arte). Basta renderizar.
+    expect(find.byType(PandaLogo), findsOneWidget);
+    expect(find.byType(Image), findsOneWidget);
   });
 }

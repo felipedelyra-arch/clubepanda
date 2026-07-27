@@ -4,17 +4,53 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/app_prefs.dart';
+import '../../core/demo.dart';
 import '../../core/services/services.dart';
 import '../../core/theme/colors.dart';
 import '../../core/models/models.dart';
 import '../../core/widgets/state_views.dart';
 
 /// Central de notificações — lista de avisos e promoções recebidos.
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Abriu a central: zera o badge marcando as não lidas como lidas.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _marcarLidas());
+  }
+
+  Future<void> _marcarLidas() async {
+    if (kDemo) return;
+    final auth = ref.read(authStateProvider).value;
+    if (auth == null) return;
+    final col = ref
+        .read(firestoreProvider)
+        .collection('users')
+        .doc(auth.uid)
+        .collection('notifications');
+    try {
+      final naoLidas = await col.where('lida', isEqualTo: false).get();
+      if (naoLidas.docs.isEmpty) return;
+      final batch = ref.read(firestoreProvider).batch();
+      for (final d in naoLidas.docs) {
+        batch.update(d.reference, {'lida': true});
+      }
+      await batch.commit();
+    } catch (_) {
+      // Silencioso: marcar como lida é secundário; não atrapalha a leitura.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final notifs = ref.watch(notificationsProvider);
     final ativadas = ref.watch(notificationsEnabledProvider);
 

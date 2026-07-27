@@ -16,7 +16,6 @@ final _demoUser = AppUser(
   nome: 'Ana Souza',
   email: 'ana@email.com',
   telefone: '(14) 99911-0001',
-  pontos: 320,
   nascimento: DateTime(1992, 7, 23),
 );
 
@@ -46,9 +45,9 @@ final _demoNotifications = [
   ),
   AppNotification(
     id: 'n4',
-    titulo: 'Você juntou 320 pontos',
-    corpo: 'Faltam 180 pra um rodízio grátis. Continue assim!',
-    tipo: 'info',
+    titulo: 'Rodízio grátis liberado! 🍣',
+    corpo: 'Resgate até hoje às 22h na aba de prêmios. Corre!',
+    tipo: 'promo',
     criadoEm: DateTime.now().subtract(const Duration(days: 5)),
     lida: true,
   ),
@@ -199,36 +198,37 @@ final _demoRewards = [
     titulo: 'Rodízio grátis',
     descricao: 'Um rodízio completo por nossa conta.',
     tipo: 'rodizio',
-    custoPontos: 500,
     estoque: 10,
+    resgatavelAte: DateTime.now().add(const Duration(hours: 8)),
     imagem: 'assets/images/reward_rodizio.jpg',
+    valor: 89.90,
   ),
   Reward(
     id: 'rw2',
     titulo: 'Sushi especial do chef',
     descricao: 'Combinado exclusivo de 12 peças.',
     tipo: 'prato',
-    custoPontos: 250,
     estoque: 20,
+    resgatavelAte: DateTime.now().add(const Duration(days: 2)),
     imagem: 'assets/images/reward_sushi.jpg',
+    valor: 74.90,
   ),
   Reward(
     id: 'rw3',
     titulo: 'Sorvete de matchá',
     descricao: 'Sobremesa tradicional japonesa.',
     tipo: 'sobremesa',
-    custoPontos: 100,
     estoque: 0,
+    valor: 18.00,
   ),
   Reward(
     id: 'rw4',
     titulo: 'Combo delivery grátis',
     descricao: 'Uma entrega por nossa conta. #PandaLovers',
     tipo: 'cupom',
-    custoPontos: 0,
     estoque: 50,
-    apenasAssinantes: true,
     imagem: 'assets/images/reward_delivery.jpg',
+    valor: 15.00,
   ),
 ];
 
@@ -241,7 +241,7 @@ final _demoPlans = [
     intervalo: 'mês',
     beneficios: [
       'Descontos e promoções exclusivas todo mês',
-      'Junte pontos e troque por comida',
+      'Prêmios e pratos liberados pelo restaurante',
       'Sobremesa grátis no seu aniversário',
       'Sem fidelidade — cancele quando quiser',
     ],
@@ -249,6 +249,9 @@ final _demoPlans = [
   ),
 ];
 
+/// Histórico de resgates. Os `rw_hist*` são prêmios de campanhas passadas —
+/// não estão mais na lista ativa, então não bloqueiam o resgate ao vivo de
+/// `rw1` e `rw4` (que ficam livres pra demonstrar o fluxo completo).
 final _demoRedemptions = [
   Redemption(
     id: 'rd1',
@@ -258,6 +261,7 @@ final _demoRedemptions = [
     codigo: 'A1B2C3D4E5F6',
     status: 'disponivel',
     criadoEm: DateTime.now().subtract(const Duration(days: 1)),
+    valor: 74.90,
   ),
   Redemption(
     id: 'rd2',
@@ -267,6 +271,47 @@ final _demoRedemptions = [
     codigo: '9Z8Y7X6W5V4U',
     status: 'usado',
     criadoEm: DateTime.now().subtract(const Duration(days: 9)),
+    valor: 18.00,
+  ),
+  Redemption(
+    id: 'rd3',
+    userId: 'u_demo',
+    rewardId: 'rw_hist1',
+    rewardTitulo: 'Rodízio grátis',
+    codigo: 'K3M9P2Q7R1T5',
+    status: 'usado',
+    criadoEm: DateTime.now().subtract(const Duration(days: 45)),
+    valor: 89.90,
+  ),
+  Redemption(
+    id: 'rd4',
+    userId: 'u_demo',
+    rewardId: 'rw_hist2',
+    rewardTitulo: 'Combinado do chef',
+    codigo: 'F8G4H6J2L0N3',
+    status: 'usado',
+    criadoEm: DateTime.now().subtract(const Duration(days: 78)),
+    valor: 99.90,
+  ),
+  Redemption(
+    id: 'rd5',
+    userId: 'u_demo',
+    rewardId: 'rw_hist3',
+    rewardTitulo: 'Sobremesa de aniversário',
+    codigo: 'W2X5Y8Z1B4C7',
+    status: 'usado',
+    criadoEm: DateTime.now().subtract(const Duration(days: 120)),
+    valor: 24.90,
+  ),
+  Redemption(
+    id: 'rd6',
+    userId: 'u_demo',
+    rewardId: 'rw_hist4',
+    rewardTitulo: 'Rodízio grátis',
+    codigo: 'D6E1F9G3H7J0',
+    status: 'usado',
+    criadoEm: DateTime.now().subtract(const Duration(days: 160)),
+    valor: 89.90,
   ),
 ];
 

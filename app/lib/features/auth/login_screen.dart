@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -57,6 +58,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  /// Login social. Usa os provedores nativos do firebase_auth (sem pacote
+  /// extra). Requer os provedores habilitados no console + config de
+  /// plataforma (client id no web/iOS, "Sign in with Apple" no Xcode).
+  Future<void> _entrarComProvedor(Future<void> Function() fluxo) async {
+    if (kDemo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login social desativado no modo demo')),
+      );
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _erro = null;
+    });
+    try {
+      await fluxo();
+    } on FirebaseAuthException catch (e) {
+      setState(() => _erro = _mensagemErro(e.code));
+    } catch (_) {
+      setState(() => _erro = 'Não foi possível entrar. Tente de novo.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _entrarGoogle() => _entrarComProvedor(() async {
+        await ref
+            .read(firebaseAuthProvider)
+            .signInWithProvider(GoogleAuthProvider());
+      });
+
+  Future<void> _entrarApple() => _entrarComProvedor(() async {
+        final provider = OAuthProvider('apple.com')
+          ..addScope('email')
+          ..addScope('name');
+        await ref.read(firebaseAuthProvider).signInWithProvider(provider);
+      });
 
   Future<void> _recuperarSenha() async {
     if (_email.text.trim().isEmpty) {
@@ -325,6 +364,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // CTA com gradiente + brilho laranja.
                     _botaoEntrar(),
 
+                    const SizedBox(height: 20),
+                    _divisorOu(),
+                    const SizedBox(height: 16),
+                    _botaoSocial(
+                      onTap: _loading ? null : _entrarGoogle,
+                      icone: Icons.g_mobiledata_rounded,
+                      texto: 'Continuar com Google',
+                    ),
+                    // Apple exige o botão em plataformas Apple (e web Safari).
+                    if (defaultTargetPlatform == TargetPlatform.iOS ||
+                        defaultTargetPlatform == TargetPlatform.macOS) ...[
+                      const SizedBox(height: 12),
+                      _botaoSocial(
+                        onTap: _loading ? null : _entrarApple,
+                        icone: Icons.apple_rounded,
+                        texto: 'Continuar com Apple',
+                      ),
+                    ],
+
                     const SizedBox(height: 22),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -397,6 +455,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             borderSide: const BorderSide(color: PandaColors.laranja, width: 1.5),
           ),
           errorStyle: const TextStyle(color: PandaColors.vermelhoAcento),
+        ),
+      ),
+    );
+  }
+
+  Widget _divisorOu() {
+    return Row(
+      children: [
+        Expanded(child: Container(height: 1, color: _borda)),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('ou',
+              style: TextStyle(color: PandaColors.cinzaTexto, fontSize: 13)),
+        ),
+        Expanded(child: Container(height: 1, color: _borda)),
+      ],
+    );
+  }
+
+  Widget _botaoSocial({
+    required VoidCallback? onTap,
+    required IconData icone,
+    required String texto,
+  }) {
+    return Material(
+      color: _card,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          height: 54,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _borda),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icone, color: Colors.white, size: 24),
+              const SizedBox(width: 10),
+              Text(texto,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600)),
+            ],
+          ),
         ),
       ),
     );

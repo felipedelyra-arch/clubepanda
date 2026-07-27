@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/models.dart';
@@ -10,6 +11,7 @@ final firebaseAuthProvider = Provider((_) => FirebaseAuth.instance);
 final firestoreProvider = Provider((_) => FirebaseFirestore.instance);
 final functionsProvider =
     Provider((_) => FirebaseFunctions.instanceFor(region: 'southamerica-east1'));
+final storageProvider = Provider((_) => FirebaseStorage.instance);
 
 /// Stream do estado de autenticação.
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -105,4 +107,26 @@ final redemptionsProvider = StreamProvider<List<Redemption>>((ref) {
       .where('userId', isEqualTo: auth.uid)
       .snapshots()
       .map((s) => s.docs.map(Redemption.fromDoc).toList());
+});
+
+/// Quanto o sócio já economizou com os prêmios que resgatou.
+/// Usa o valor congelado no resgate; se não houver, o valor atual do prêmio.
+final economiaProvider = Provider<({double total, int resgates})>((ref) {
+  final resgates = ref.watch(redemptionsProvider).value ?? const [];
+  final premios = ref.watch(rewardsProvider).value ?? const [];
+
+  var total = 0.0;
+  for (final r in resgates) {
+    if (r.valor > 0) {
+      total += r.valor;
+      continue;
+    }
+    for (final p in premios) {
+      if (p.id == r.rewardId) {
+        total += p.valor;
+        break;
+      }
+    }
+  }
+  return (total: total, resgates: resgates.length);
 });

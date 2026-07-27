@@ -23,6 +23,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _email = TextEditingController();
   final _telefone = TextEditingController();
   final _senha = TextEditingController();
+  final _codigo = TextEditingController();
   DateTime? _nascimento;
   bool _loading = false;
   String? _erro;
@@ -33,6 +34,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _email.dispose();
     _telefone.dispose();
     _senha.dispose();
+    _codigo.dispose();
     super.dispose();
   }
 
@@ -75,9 +77,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         'telefone': _telefone.text.trim(),
         if (_nascimento != null)
           'nascimento': Timestamp.fromDate(_nascimento!),
-        'pontos': 0,
         'criadoEm': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      // Código de indicação (opcional). Falha aqui não bloqueia o cadastro.
+      final codigo = _codigo.text.trim();
+      if (codigo.isNotEmpty) {
+        try {
+          await ref
+              .read(functionsProvider)
+              .httpsCallable('applyReferral')
+              .call({'code': codigo});
+        } catch (_) {
+          // Código inválido/já usado — segue sem interromper o cadastro.
+        }
+      }
     } on FirebaseAuthException catch (e) {
       setState(() => _erro = _mensagemErro(e.code));
     } finally {
@@ -188,6 +202,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       const InputDecoration(hintText: 'Mínimo 6 caracteres'),
                   validator: (v) =>
                       (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                ),
+                const SizedBox(height: 18),
+                _Campo(label: 'Código de indicação (opcional)'),
+                TextFormField(
+                  controller: _codigo,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.group_add_outlined),
+                      hintText: 'Tem um código de um amigo?'),
                 ),
                 if (_erro != null) ...[
                   const SizedBox(height: 14),

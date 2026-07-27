@@ -1,6 +1,44 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_prefs.dart';
+
+const String _kThemeModeKey = 'theme_mode';
+
+/// Tema do app escolhido pelo usuário: acompanha o sistema, claro ou escuro.
+/// Persistido em disco e lido de forma síncrona no boot — sem piscar o tema
+/// errado ao abrir. Aplicado no MaterialApp (main.dart).
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
+    final salvo = ref.watch(sharedPreferencesProvider).getString(_kThemeModeKey);
+    return switch (salvo) {
+      'claro' => ThemeMode.light,
+      'escuro' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+  }
+
+  Future<void> definir(ThemeMode modo) async {
+    state = modo;
+    final valor = switch (modo) {
+      ThemeMode.light => 'claro',
+      ThemeMode.dark => 'escuro',
+      ThemeMode.system => 'sistema',
+    };
+    await ref.read(sharedPreferencesProvider).setString(_kThemeModeKey, valor);
+  }
+}
+
+final themeModeProvider =
+    NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+
+/// Rótulo amigável do tema atual.
+String rotuloTema(ThemeMode m) => switch (m) {
+      ThemeMode.light => 'Claro',
+      ThemeMode.dark => 'Escuro',
+      ThemeMode.system => 'Automático',
+    };
 
 const double kMinTextScale = 1.0;
 const double kMaxTextScale = 1.4;

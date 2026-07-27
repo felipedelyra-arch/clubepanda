@@ -26,13 +26,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       icone: Icons.qr_code_2_rounded,
       titulo: 'Sua carteirinha digital',
       texto:
-          'Mostre o app no caixa a cada visita e junte pontos automaticamente.',
+          'Mostre o app no caixa pra se identificar como sócio do Clube.',
     ),
     _Slide(
       icone: Icons.card_giftcard_rounded,
-      titulo: 'Troque pontos por comida',
+      titulo: 'Prêmios liberados pelo restaurante',
       texto:
-          'Rodízios, sushi e sobremesas esperam por você na aba de prêmios.',
+          'O Tio Panda libera pratos e brindes com prazo. Resgate mostrando o QR no caixa.',
     ),
     _Slide(
       icone: Icons.notifications_active_rounded,

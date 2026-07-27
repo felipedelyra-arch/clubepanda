@@ -1,13 +1,18 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/push_service.dart';
+import 'core/connectivity.dart';
+import 'core/version_gate.dart';
 import 'core/demo.dart';
 import 'core/app_prefs.dart';
 import 'core/ui_prefs.dart';
@@ -26,6 +31,13 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // Crashlytics: captura erros de framework e assíncronos não tratados.
+    FlutterError.onError =
+        FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
   }
 
   runApp(
@@ -49,12 +61,13 @@ class ClubePandaApp extends ConsumerWidget {
     }
     final router = ref.watch(routerProvider);
     final textScale = ref.watch(textScaleProvider);
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'Clube Panda',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       locale: const Locale('pt', 'BR'),
       supportedLocales: const [Locale('pt', 'BR')],
       localizationsDelegates: const [
@@ -68,7 +81,11 @@ class ClubePandaApp extends ConsumerWidget {
         final mq = MediaQuery.of(context);
         return MediaQuery(
           data: mq.copyWith(textScaler: TextScaler.linear(textScale)),
-          child: PhoneFrame(child: child ?? const SizedBox()),
+          child: PhoneFrame(
+            child: ConnectivityGate(
+              child: VersionGate(child: child ?? const SizedBox()),
+            ),
+          ),
         );
       },
     );

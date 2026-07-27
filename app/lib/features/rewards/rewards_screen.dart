@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/services/services.dart';
+import '../../core/analytics.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
+import '../../core/theme/dimens.dart';
 import '../../core/widgets/state_views.dart';
+import '../../core/widgets/entrada.dart';
+import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/app_image.dart';
 import '../../core/models/models.dart';
 
@@ -23,48 +30,74 @@ IconData _iconeTipo(String tipo) {
   }
 }
 
+/// Formata o prazo de resgate pra exibição curta.
+String _fmtPrazo(DateTime d) {
+  final agora = DateTime.now();
+  final hoje = DateTime(agora.year, agora.month, agora.day);
+  final dia = DateTime(d.year, d.month, d.day);
+  final hora = DateFormat('HH:mm').format(d);
+  if (dia == hoje) return 'hoje às $hora';
+  if (dia == hoje.add(const Duration(days: 1))) return 'amanhã às $hora';
+  return '${DateFormat('dd/MM').format(d)} às $hora';
+}
+
 class RewardsScreen extends ConsumerWidget {
   const RewardsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rewards = ref.watch(rewardsProvider);
-    final user = ref.watch(currentUserProvider);
-    final pontos = user.value?.pontos ?? 0;
+    final isSub = ref.watch(isSubscriberProvider);
+    final redemptions = ref.watch(redemptionsProvider).value ?? const [];
+    // Prêmios que este usuário já resgatou (limite 1 por pessoa).
+    final resgatados = redemptions.map((r) => r.rewardId).toSet();
 
     return Scaffold(
       body: SafeArea(
         child: rewards.when(
-          loading: () => const LoadingView(),
+          loading: () => const SkeletonList(),
           error: (e, _) => ErrorView(
               mensagem: 'Não deu pra carregar os prêmios.',
               onRetry: () => ref.invalidate(rewardsProvider)),
           data: (list) {
             return ListView(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-              children: [
+              children: escalonar([
                 Text('Prêmios',
                     style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(height: 16),
-                _SaldoCard(pontos: pontos),
-                const SizedBox(height: 28),
-                const _SectionLabel('Troque seus pontos'),
-                const SizedBox(height: 14),
+                if (!isSub)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: _SocioBanner(),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 24),
+                  child: _SectionLabel('Liberados pelo restaurante'),
+                ),
                 if (list.isEmpty)
-                  const EmptyView(
-                    mensagem: 'Nenhum prêmio disponível agora.',
-                    icone: Icons.card_giftcard_outlined,
+                  const Padding(
+                    padding: EdgeInsets.only(top: 14),
+                    child: EmptyView(
+                      mensagem: 'Nenhum prêmio disponível agora.',
+                      icone: Icons.card_giftcard_outlined,
+                    ),
                   )
                 else
-                  for (final r in list) ...[
-                    _RewardTile(
-                      reward: r,
-                      podeResgatar: pontos >= r.custoPontos && r.disponivel,
-                      onTap: () => _abrir(context, r),
+                  for (final r in list)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: _RewardTile(
+                        reward: r,
+                        jaResgatou: resgatados.contains(r.id),
+                        onTap: () => _abrir(
+                          context,
+                          r,
+                          isSub: isSub,
+                          jaResgatou: resgatados.contains(r.id),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                  ],
-              ],
+              ]),
             );
           },
         ),
@@ -72,61 +105,66 @@ class RewardsScreen extends ConsumerWidget {
     );
   }
 
-  void _abrir(BuildContext context, Reward reward) {
+  void _abrir(BuildContext context, Reward reward,
+      {required bool isSub, required bool jaResgatou}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      builder: (_) => _RewardSheet(reward: reward),
+      builder: (_) =>
+          _RewardSheet(reward: reward, isSub: isSub, jaResgatou: jaResgatou),
     );
   }
 }
 
-class _SaldoCard extends StatelessWidget {
-  const _SaldoCard({required this.pontos});
-  final int pontos;
+/// Aviso pra quem não é sócio — prêmios são exclusivos do Clube.
+class _SocioBanner extends StatelessWidget {
+  const _SocioBanner();
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final acento = isDark ? PandaColors.laranja : PandaColors.laranjaEscuro;
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: PandaColors.laranjaSuave,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? PandaColors.cardDark : PandaColors.laranjaSuave,
+        borderRadius: PandaRadius.bmd,
+        border: Border.all(
+            color: isDark
+                ? PandaColors.laranja.withValues(alpha: 0.35)
+                : Colors.transparent),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Seu saldo',
-                  style: TextStyle(
-                      color: PandaColors.laranjaEscuro,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text('$pontos',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: PandaColors.laranjaEscuro,
-                          )),
-                  const SizedBox(width: 6),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 4),
-                    child: Text('pontos',
-                        style: TextStyle(color: PandaColors.laranjaEscuro)),
-                  ),
-                ],
+              Icon(Icons.lock_outline, color: acento),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Exclusivo pra sócios',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: acento,
+                        height: 1.25,
+                        fontWeight: FontWeight.w700)),
               ),
             ],
           ),
-          const Spacer(),
-          const Icon(Icons.stars_rounded, color: PandaColors.laranja, size: 44),
+          const SizedBox(height: 10),
+          Text(
+              'Entre pro Clube pra resgatar os prêmios que o Tio Panda libera.',
+              style: TextStyle(
+                  color: isDark ? PandaColors.branco : PandaColors.preto,
+                  height: 1.4)),
+          const SizedBox(height: 18),
+          ElevatedButton(
+            onPressed: () => context.go('/planos'),
+            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+            child: const Text('Ver planos'),
+          ),
         ],
       ),
     );
@@ -157,30 +195,31 @@ class _SectionLabel extends StatelessWidget {
 class _RewardTile extends StatelessWidget {
   const _RewardTile({
     required this.reward,
-    required this.podeResgatar,
+    required this.jaResgatou,
     required this.onTap,
   });
 
   final Reward reward;
-  final bool podeResgatar;
+  final bool jaResgatou;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final esgotado = !reward.disponivel;
+    // Apagado quando não dá mais pra resgatar.
+    final inativo = jaResgatou || !reward.disponivel;
 
     return Opacity(
-      opacity: esgotado ? 0.55 : 1,
+      opacity: inativo ? 0.6 : 1,
       child: Material(
         color: isDark ? PandaColors.cardDark : PandaColors.branco,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: PandaRadius.bmd,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: PandaRadius.bmd,
           child: Ink(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: PandaRadius.bmd,
               border: Border.all(
                 color: isDark ? PandaColors.hairlineDark : PandaColors.hairline,
               ),
@@ -194,7 +233,7 @@ class _RewardTile extends StatelessWidget {
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: PandaColors.laranjaSuave,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: PandaRadius.bsm,
                   ),
                   child: reward.imagem != null
                       ? appImage(reward.imagem!,
@@ -217,19 +256,18 @@ class _RewardTile extends StatelessWidget {
                               ?.copyWith(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
                       Text(
-                        esgotado ? 'Esgotado' : reward.descricao,
+                        reward.descricao,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                             color: PandaColors.cinzaTexto, fontSize: 13),
                       ),
                       const SizedBox(height: 8),
-                      _custoPill(reward),
+                      _statusPill(reward, jaResgatou),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right,
-                    color: PandaColors.cinzaTexto),
+                const Icon(Icons.chevron_right, color: PandaColors.cinzaTexto),
               ],
             ),
           ),
@@ -238,39 +276,51 @@ class _RewardTile extends StatelessWidget {
     );
   }
 
-  Widget _custoPill(Reward reward) {
-    if (reward.apenasAssinantes) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: PandaColors.laranjaSuave,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text('Exclusivo Clube',
-            style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: PandaColors.laranjaEscuro)),
-      );
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.star_rounded, size: 15, color: PandaColors.laranja),
-        const SizedBox(width: 4),
-        Text('${reward.custoPontos} pts',
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: PandaColors.laranjaEscuro)),
-      ],
+  Widget _pill(String texto, Color fg, IconData icone) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: fg.withValues(alpha: 0.12),
+        borderRadius: PandaRadius.bxs,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icone, size: 13, color: fg),
+          const SizedBox(width: 4),
+          Text(texto,
+              style: TextStyle(
+                  fontSize: 11.5, fontWeight: FontWeight.w700, color: fg)),
+        ],
+      ),
     );
+  }
+
+  Widget _statusPill(Reward reward, bool jaResgatou) {
+    if (jaResgatou) {
+      return _pill('Já resgatado', PandaColors.verdeSucesso, Icons.check_rounded);
+    }
+    if (!reward.noPrazo) {
+      return _pill('Prazo encerrado', PandaColors.cinzaTexto,
+          Icons.timer_off_outlined);
+    }
+    if (reward.estoque <= 0) {
+      return _pill('Esgotado', PandaColors.cinzaTexto, Icons.inventory_2_outlined);
+    }
+    if (reward.resgatavelAte != null) {
+      return _pill('Até ${_fmtPrazo(reward.resgatavelAte!)}',
+          PandaColors.laranjaEscuro, Icons.schedule_rounded);
+    }
+    return _pill('Disponível', PandaColors.laranjaEscuro, Icons.card_giftcard);
   }
 }
 
 class _RewardSheet extends ConsumerStatefulWidget {
-  const _RewardSheet({required this.reward});
+  const _RewardSheet(
+      {required this.reward, required this.isSub, required this.jaResgatou});
   final Reward reward;
+  final bool isSub;
+  final bool jaResgatou;
 
   @override
   ConsumerState<_RewardSheet> createState() => _RewardSheetState();
@@ -289,6 +339,7 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
     if (kDemo) {
       await Future<void>.delayed(const Duration(milliseconds: 600));
       if (mounted) {
+        HapticFeedback.mediumImpact();
         setState(() {
           _codigo = 'DEMO${DateTime.now().millisecondsSinceEpoch % 100000000}';
           _loading = false;
@@ -300,6 +351,9 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
       final callable =
           ref.read(functionsProvider).httpsCallable('redeemReward');
       final res = await callable.call({'rewardId': widget.reward.id});
+      HapticFeedback.mediumImpact();
+      logEventoUi(ref, 'reward_redeemed',
+          params: {'reward_id': widget.reward.id});
       setState(() => _codigo = res.data['codigo'] as String);
     } on FirebaseFunctionsException catch (e) {
       setState(() => _erro = e.message ?? 'Não foi possível resgatar.');
@@ -328,7 +382,7 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
-            const Text('Mostre este código no caixa do Tio Panda.',
+            const Text('Mostre este QR ao atendente pra receber.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: PandaColors.cinzaTexto)),
             const SizedBox(height: 24),
@@ -337,7 +391,7 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: PandaRadius.blg,
                   border: Border.all(color: PandaColors.hairline),
                 ),
                 child: QrImageView(
@@ -360,7 +414,7 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
           ] else ...[
             if (r.imagem != null) ...[
               ClipRRect(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: PandaRadius.bmd,
                 child: SizedBox(
                   height: 170,
                   width: double.infinity,
@@ -379,7 +433,7 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: PandaColors.laranjaSuave,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: PandaRadius.bsm,
                   ),
                   child: r.imagem != null
                       ? appImage(r.imagem!,
@@ -404,8 +458,10 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
               children: [
                 _info(
                   context,
-                  r.apenasAssinantes ? 'Acesso' : 'Custo',
-                  r.apenasAssinantes ? 'Exclusivo Clube' : '${r.custoPontos} pts',
+                  'Resgatar até',
+                  r.resgatavelAte != null
+                      ? _fmtPrazo(r.resgatavelAte!)
+                      : 'Sem prazo',
                 ),
                 const SizedBox(width: 12),
                 _info(context, 'Estoque', '${r.estoque}'),
@@ -417,19 +473,42 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
                   style: const TextStyle(color: PandaColors.vermelhoAcento)),
             ],
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: (_loading || !r.disponivel) ? null : _resgatar,
-              child: _loading
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : Text(r.disponivel ? 'Resgatar prêmio' : 'Esgotado'),
-            ),
+            _acao(context, r),
           ],
         ],
       ),
+    );
+  }
+
+  /// Botão de ação conforme o estado (sócio, prazo, estoque, já resgatado).
+  Widget _acao(BuildContext context, Reward r) {
+    if (!widget.isSub) {
+      return ElevatedButton(
+        onPressed: () {
+          Navigator.pop(context);
+          context.go('/planos');
+        },
+        child: const Text('Seja sócio pra resgatar'),
+      );
+    }
+    if (widget.jaResgatou) {
+      return const _BotaoBloqueado(texto: 'Você já resgatou este prêmio');
+    }
+    if (!r.noPrazo) {
+      return const _BotaoBloqueado(texto: 'Prazo encerrado');
+    }
+    if (r.estoque <= 0) {
+      return const _BotaoBloqueado(texto: 'Esgotado');
+    }
+    return ElevatedButton(
+      onPressed: _loading ? null : _resgatar,
+      child: _loading
+          ? const SizedBox(
+              height: 22,
+              width: 22,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white))
+          : const Text('Resgatar prêmio'),
     );
   }
 
@@ -440,7 +519,7 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
           color: isDark ? PandaColors.cardDark : PandaColors.cinzaClaro,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: PandaRadius.bsm,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,6 +537,20 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Botão desabilitado com texto explicativo (prazo/estoque/já resgatado).
+class _BotaoBloqueado extends StatelessWidget {
+  const _BotaoBloqueado({required this.texto});
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: null,
+      child: Text(texto),
     );
   }
 }
