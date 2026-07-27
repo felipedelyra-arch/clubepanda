@@ -63,11 +63,31 @@
     <div class="s"></div>
   </div>
   <script>
-    // Some o splash quando o Flutter renderiza o primeiro frame.
-    window.addEventListener('flutter-first-frame', function () {
-      var s = document.getElementById('panda-splash');
-      if (s) { s.style.opacity = '0'; setTimeout(function(){ s.remove(); }, 400); }
-    });
+    // Remove o splash de forma robusta: no primeiro frame do Flutter, OU quando
+    // a <flutter-view> montar, OU por timeout de segurança. Assim o usuário
+    // nunca fica preso no splash mesmo se o evento não disparar.
+    (function () {
+      var removido = false;
+      function tirarSplash() {
+        if (removido) return;
+        removido = true;
+        var s = document.getElementById('panda-splash');
+        if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 400); }
+        if (obs) obs.disconnect();
+        clearInterval(poll);
+      }
+      window.addEventListener('flutter-first-frame', tirarSplash);
+      // Observa o DOM: assim que a view do Flutter aparecer, some o splash.
+      var obs = new MutationObserver(function () {
+        if (document.querySelector('flutter-view, flt-glass-pane')) tirarSplash();
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+      // Fallback por polling + timeout duro (nunca prende o usuário).
+      var poll = setInterval(function () {
+        if (document.querySelector('flutter-view, flt-glass-pane')) tirarSplash();
+      }, 300);
+      setTimeout(tirarSplash, 8000);
+    })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
