@@ -5,55 +5,64 @@ import { FieldValue } from "firebase-admin/firestore";
 import { requireAuth, requireAdmin } from "./lib/guards";
 
 /**
- * Resgata uma premiação. Transação atômica: valida pontos/estoque/assinante,
- * debita pontos, baixa estoque e cria redemption com código/QR único.
+ * Resgata uma premiação (benefício exclusivo de sócios). Transação atômica:
+ * valida assinatura ativa, estoque, janela de resgate (resgatavelAte) e limite
+ * de 1 por pessoa; baixa estoque e cria redemption com código/QR único.
+ * Não há mais custo em pontos — o dono libera o prêmio com prazo.
  */
 export const redeemReward = onCall(async (req) => {
   const uid = requireAuth(req);
   const { rewardId } = req.data as { rewardId?: string };
   if (!rewardId) throw new HttpsError("invalid-argument", "rewardId obrigatório.");
 
+  // Só sócios resgatam. Leitura fora da transação (não afeta consistência do estoque).
+  const subs = await db
+    .collection("subscriptions")
+    .where("userId", "==", uid)
+    .where("status", "==", "active")
+    .limit(1)
+    .get();
+  if (subs.empty) {
+    throw new HttpsError("permission-denied", "Premiações são exclusivas para sócios.");
+  }
+
   const codigo = randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase();
 
   const redemptionId = await db.runTransaction(async (tx) => {
     const rewardRef = db.doc(`rewards/${rewardId}`);
-    const userRef = db.doc(`users/${uid}`);
-    const [rewardSnap, userSnap] = await Promise.all([
+    // 1 por pessoa: já existe resgate deste prêmio pra este usuário?
+    const jaResgatouQuery = db
+      .collection("redemptions")
+      .where("userId", "==", uid)
+      .where("rewardId", "==", rewardId)
+      .limit(1);
+
+    const [rewardSnap, jaResgatouSnap] = await Promise.all([
       tx.get(rewardRef),
-      tx.get(userRef),
+      tx.get(jaResgatouQuery),
     ]);
 
     if (!rewardSnap.exists) throw new HttpsError("not-found", "Premiação não existe.");
-    if (!userSnap.exists) throw new HttpsError("not-found", "Usuário não existe.");
+    if (!jaResgatouSnap.empty) {
+      throw new HttpsError("already-exists", "Você já resgatou este prêmio.");
+    }
 
     const reward = rewardSnap.data()!;
-    const user = userSnap.data()!;
 
     const estoque = reward.estoque ?? 0;
     if (estoque <= 0) throw new HttpsError("failed-precondition", "Sem estoque.");
 
-    // Exclusivo assinante?
-    if (reward.apenasAssinantes === true) {
-      const subs = await db
-        .collection("subscriptions")
-        .where("userId", "==", uid)
-        .where("status", "==", "active")
-        .limit(1)
-        .get();
-      if (subs.empty) {
-        throw new HttpsError("permission-denied", "Exclusivo para assinantes.");
-      }
-    }
-
-    const custo = reward.custoPontos ?? 0;
-    const pontos = user.pontos ?? 0;
-    if (pontos < custo) {
-      throw new HttpsError("failed-precondition", "Pontos insuficientes.");
+    // Janela de resgate definida pelo dono.
+    const resgatavelAte = reward.resgatavelAte as
+      | FirebaseFirestore.Timestamp
+      | undefined
+      | null;
+    if (resgatavelAte && resgatavelAte.toMillis() < Date.now()) {
+      throw new HttpsError("failed-precondition", "Prazo de resgate encerrado.");
     }
 
     // Efeitos
     tx.update(rewardRef, { estoque: estoque - 1 });
-    if (custo > 0) tx.update(userRef, { pontos: pontos - custo });
 
     const redemptionRef = db.collection("redemptions").doc();
     tx.set(redemptionRef, {

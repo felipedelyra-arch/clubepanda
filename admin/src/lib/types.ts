@@ -6,7 +6,6 @@ export interface AppUser {
   email: string;
   telefone?: string;
   endereco?: string | null;
-  pontos: number;
   role?: string | null;
   criadoEm?: Date | null;
 }
@@ -40,10 +39,10 @@ export interface Reward {
   titulo: string;
   descricao: string;
   imagem?: string | null;
-  custoPontos: number;
   tipo: RewardTipo;
   estoque: number;
-  apenasAssinantes: boolean;
+  /** Prazo limite pra resgatar (definido pelo dono). Nulo = sem prazo. */
+  resgatavelAte?: Date | null;
 }
 
 export interface Redemption {

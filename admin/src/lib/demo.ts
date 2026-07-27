@@ -33,14 +33,14 @@ const diasAtras = (n: number) =>
   new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
 
 const demoUsers: AppUser[] = [
-  { uid: "u_ana", nome: "Ana Souza", email: "ana@email.com", telefone: "(14) 99911-0001", pontos: 320, criadoEm: mes(0, 5) },
-  { uid: "u_bruno", nome: "Bruno Lima", email: "bruno@email.com", telefone: "(14) 99911-0002", pontos: 80, criadoEm: mes(1, 12) },
-  { uid: "u_carla", nome: "Carla Dias", email: "carla@email.com", telefone: "(14) 99911-0003", pontos: 540, criadoEm: mes(2, 3) },
-  { uid: "u_diego", nome: "Diego Rocha", email: "diego@email.com", telefone: "(14) 99911-0004", pontos: 15, criadoEm: mes(3, 20) },
-  { uid: "u_elis", nome: "Elis Prado", email: "elis@email.com", telefone: "(14) 99911-0005", pontos: 210, criadoEm: mes(4, 8) },
-  { uid: "u_fabio", nome: "Fábio Nunes", email: "fabio@email.com", telefone: "(14) 99911-0006", pontos: 0, criadoEm: mes(5, 14) },
-  { uid: "u_gina", nome: "Gina Melo", email: "gina@email.com", telefone: "(14) 99911-0007", pontos: 690, criadoEm: mes(6, 2) },
-  { uid: "u_admin", nome: "Tio Panda (você)", email: "admin@tiopanda.com.br", telefone: "", pontos: 0, role: "admin", criadoEm: mes(0, 1) },
+  { uid: "u_ana", nome: "Ana Souza", email: "ana@email.com", telefone: "(14) 99911-0001", criadoEm: mes(0, 5) },
+  { uid: "u_bruno", nome: "Bruno Lima", email: "bruno@email.com", telefone: "(14) 99911-0002", criadoEm: mes(1, 12) },
+  { uid: "u_carla", nome: "Carla Dias", email: "carla@email.com", telefone: "(14) 99911-0003", criadoEm: mes(2, 3) },
+  { uid: "u_diego", nome: "Diego Rocha", email: "diego@email.com", telefone: "(14) 99911-0004", criadoEm: mes(3, 20) },
+  { uid: "u_elis", nome: "Elis Prado", email: "elis@email.com", telefone: "(14) 99911-0005", criadoEm: mes(4, 8) },
+  { uid: "u_fabio", nome: "Fábio Nunes", email: "fabio@email.com", telefone: "(14) 99911-0006", criadoEm: mes(5, 14) },
+  { uid: "u_gina", nome: "Gina Melo", email: "gina@email.com", telefone: "(14) 99911-0007", criadoEm: mes(6, 2) },
+  { uid: "u_admin", nome: "Tio Panda (você)", email: "admin@tiopanda.com.br", telefone: "", role: "admin", criadoEm: mes(0, 1) },
 ];
 
 const demoSubs: Subscription[] = [
@@ -67,10 +67,10 @@ const demoPromotions: Promotion[] = [
 ];
 
 const demoRewards: Reward[] = [
-  { id: "rw1", titulo: "Rodízio grátis", descricao: "Um rodízio completo por nossa conta.", tipo: "rodizio", custoPontos: 500, estoque: 10, apenasAssinantes: false, imagem: null },
-  { id: "rw2", titulo: "Sushi especial do chef", descricao: "Combinado exclusivo de 12 peças.", tipo: "prato", custoPontos: 250, estoque: 20, apenasAssinantes: false, imagem: null },
-  { id: "rw3", titulo: "Sorvete de matchá", descricao: "Sobremesa tradicional japonesa.", tipo: "sobremesa", custoPontos: 100, estoque: 0, apenasAssinantes: false, imagem: null },
-  { id: "rw4", titulo: "Saquê de boas-vindas", descricao: "Exclusivo pra assinantes.", tipo: "cupom", custoPontos: 0, estoque: 50, apenasAssinantes: true, imagem: null },
+  { id: "rw1", titulo: "Rodízio grátis", descricao: "Um rodízio completo por nossa conta.", tipo: "rodizio", estoque: 10, resgatavelAte: diasAtras(-3), imagem: null },
+  { id: "rw2", titulo: "Sushi especial do chef", descricao: "Combinado exclusivo de 12 peças.", tipo: "prato", estoque: 20, resgatavelAte: diasAtras(-1), imagem: null },
+  { id: "rw3", titulo: "Sorvete de matchá", descricao: "Sobremesa tradicional japonesa.", tipo: "sobremesa", estoque: 0, resgatavelAte: null, imagem: null },
+  { id: "rw4", titulo: "Saquê de boas-vindas", descricao: "Brinde pra quem é sócio.", tipo: "cupom", estoque: 50, resgatavelAte: null, imagem: null },
 ];
 
 const demoRedemptions: Redemption[] = [
@@ -80,7 +80,7 @@ const demoRedemptions: Redemption[] = [
 ];
 
 const demoPlans: Plan[] = [
-  { id: "p_mensal", nome: "Mensal", preco: 49.9, intervalo: "mensal", beneficios: ["Promoções exclusivas", "Acúmulo de pontos", "1 sobremesa grátis/mês"], recomendado: false, stripePriceId: "price_demo_mensal" },
+  { id: "p_mensal", nome: "Mensal", preco: 49.9, intervalo: "mensal", beneficios: ["Promoções exclusivas", "Prêmios liberados pelo restaurante", "1 sobremesa grátis/mês"], recomendado: false, stripePriceId: "price_demo_mensal" },
   { id: "p_trimestral", nome: "Trimestral", preco: 129.9, intervalo: "trimestral", beneficios: ["Tudo do Mensal", "Rodízio grátis no aniversário", "Prioridade no delivery"], recomendado: true, stripePriceId: "price_demo_tri" },
   { id: "p_anual", nome: "Anual", preco: 499.0, intervalo: "anual", beneficios: ["Tudo do Trimestral", "2 rodízios grátis", "Brinde de boas-vindas"], recomendado: false, stripePriceId: "price_demo_anual" },
 ];

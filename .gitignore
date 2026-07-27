@@ -50,3 +50,6 @@ firebase/functions/lib/
 
 # Stray root lockfile
 /package-lock.json
+
+# Documentos comerciais (não versionar)
+Proposta-Comercial-*.pdf

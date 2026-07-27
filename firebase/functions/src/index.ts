@@ -9,6 +9,8 @@ setGlobalOptions({ region: "southamerica-east1", maxInstances: 10 });
 // Auth / admin
 export { setAdminRole } from "./admin";
 export { onAuthUserCreate } from "./users";
+export { deleteAccount } from "./account";
+export { ensureReferralCode, applyReferral } from "./referral";
 
 // Assinatura (Stripe)
 export { createCheckoutSession, cancelSubscription } from "./subscriptions";

@@ -3,7 +3,7 @@ import { db } from "./lib/admin";
 import { FieldValue } from "firebase-admin/firestore";
 
 /**
- * Ao criar conta (Auth), garante o doc de perfil em users/ com pontos zerados.
+ * Ao criar conta (Auth), garante o doc de perfil em users/.
  * Escrita pelo backend => ignora rules, mas mantém consistência.
  */
 export const onAuthUserCreate = beforeUserCreated(async (event) => {
@@ -20,7 +20,6 @@ export const onAuthUserCreate = beforeUserCreated(async (event) => {
       telefone: user.phoneNumber ?? "",
       endereco: null,
       fcmToken: null,
-      pontos: 0,
       role: null,
       criadoEm: FieldValue.serverTimestamp(),
     });

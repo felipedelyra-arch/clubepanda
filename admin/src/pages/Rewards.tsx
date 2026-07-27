@@ -12,7 +12,20 @@ import { Modal, ConfirmDialog, Field, inputBase } from "../components/Modal";
 import { demoBlock } from "../lib/demo";
 
 const tipos: RewardTipo[] = ["rodizio", "prato", "sobremesa", "cupom"];
-const vazio: Partial<Reward> = { titulo: "", descricao: "", tipo: "cupom", custoPontos: 0, estoque: 1, apenasAssinantes: false };
+const vazio: Partial<Reward> = { titulo: "", descricao: "", tipo: "cupom", estoque: 1, resgatavelAte: null };
+
+/** Date -> valor de <input type="datetime-local"> (fuso local). */
+function toLocalInput(d?: Date | null): string {
+  if (!d) return "";
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+/** Formata o prazo pra exibição. */
+function fmtPrazo(d?: Date | null): string {
+  if (!d) return "Sem prazo";
+  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
 
 export function Rewards() {
   const { data, loading } = useCollection<Reward>("rewards");
@@ -37,9 +50,8 @@ export function Rewards() {
         titulo: editando.titulo,
         descricao: editando.descricao ?? "",
         tipo: editando.tipo ?? "cupom",
-        custoPontos: Number(editando.custoPontos ?? 0),
         estoque: Number(editando.estoque ?? 0),
-        apenasAssinantes: editando.apenasAssinantes ?? false,
+        resgatavelAte: editando.resgatavelAte ?? null,
         imagem,
       };
       if (editando.id) await updateDoc(doc(db, "rewards", editando.id), payload);
@@ -90,7 +102,8 @@ export function Rewards() {
               <p className="mt-1 text-sm text-panda-cinza-texto">{r.descricao}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Badge color="gray">{r.tipo}</Badge>
-                {r.apenasAssinantes ? <Badge color="orange">Exclusivo</Badge> : <Badge color="orange">{r.custoPontos} pts</Badge>}
+                <Badge color="orange">Sócios</Badge>
+                <Badge color={r.resgatavelAte ? "green" : "gray"}>Resgate: {fmtPrazo(r.resgatavelAte)}</Badge>
               </div>
               <div className="mt-4 flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setEditando(r)}>
@@ -150,20 +163,24 @@ export function Rewards() {
               </select>
             </Field>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Custo (pontos)">
-                <input type="number" className={inputBase} value={editando.custoPontos ?? 0} onChange={(e) => setEditando({ ...editando, custoPontos: Number(e.target.value) })} />
-              </Field>
               <Field label="Estoque">
                 <input type="number" className={inputBase} value={editando.estoque ?? 0} onChange={(e) => setEditando({ ...editando, estoque: Number(e.target.value) })} />
               </Field>
+              <Field label="Resgatar até">
+                <input
+                  type="datetime-local"
+                  className={inputBase}
+                  value={toLocalInput(editando.resgatavelAte)}
+                  onChange={(e) => setEditando({ ...editando, resgatavelAte: e.target.value ? new Date(e.target.value) : null })}
+                />
+              </Field>
             </div>
+            <p className="mb-3 text-xs text-panda-cinza-texto">
+              Deixe o prazo em branco para sem limite. Premiações são exclusivas de sócios e cada pessoa resgata uma vez.
+            </p>
             <Field label="Imagem">
               <input type="file" accept="image/*" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
             </Field>
-            <label className="mb-4 flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={editando.apenasAssinantes ?? false} onChange={(e) => setEditando({ ...editando, apenasAssinantes: e.target.checked })} />
-              Exclusivo para assinantes
-            </label>
             <Button onClick={salvar} disabled={salvando} className="w-full">
               {salvando ? "Salvando..." : "Salvar"}
             </Button>

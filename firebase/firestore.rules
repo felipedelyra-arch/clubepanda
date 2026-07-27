@@ -24,19 +24,25 @@ service cloud.firestore {
 
     // ---- users ----
     // Cada usuário lê/escreve só os próprios dados. Admin lê todos.
-    // Campos sensíveis (pontos, role) só o backend altera.
+    // Campo sensível (role) só o backend altera.
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId)
-                    && (!('pontos' in request.resource.data)
-                        || request.resource.data.pontos == 0)
                     // usuário não pode se auto-conceder role
                     && !('role' in request.resource.data);
       allow update: if isOwner(userId)
-                    // usuário não pode mexer nos próprios pontos nem em role
-                    && request.resource.data.pontos == resource.data.pontos
+                    // usuário não pode mexer no próprio role
                     && request.resource.data.get('role', '') == resource.data.get('role', '');
       allow delete: if isAdmin();
+
+      // ---- users/{userId}/notifications ----
+      // Central de avisos. Dono lê e marca como lida (update). Criação/remoção
+      // só backend (envio de push). Rules de subcoleção não herdam do doc pai.
+      match /notifications/{notifId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow update: if isOwner(userId); // marcar como lida
+        allow create, delete: if false;   // apenas Cloud Functions
+      }
     }
 
     // ---- subscriptions ----
@@ -45,6 +51,13 @@ service cloud.firestore {
       allow read: if isSignedIn()
                   && (resource.data.userId == request.auth.uid || isAdmin());
       allow write: if false; // apenas Cloud Functions
+    }
+
+    // ---- config ----
+    // Config pública do app (ex.: minBuild pra update obrigatório). Só admin escreve.
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // ---- plans ----
@@ -70,7 +83,7 @@ service cloud.firestore {
 
     // ---- redemptions ----
     // Dono lê os próprios resgates. Admin lê todos. Escrita só backend
-    // (resgate consome pontos/estoque; validação marca como usado).
+    // (resgate baixa estoque dentro da janela; validação marca como usado).
     match /redemptions/{redemptionId} {
       allow read: if isSignedIn()
                   && (resource.data.userId == request.auth.uid || isAdmin());
