@@ -1,13 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
+import '../../core/services/push_service.dart';
 import '../../core/demo.dart';
 import '../../core/restaurante.dart';
 import '../../core/ui_prefs.dart';
@@ -18,9 +21,22 @@ import '../../core/widgets/state_views.dart';
 import '../../core/widgets/entrada.dart';
 import '../../core/models/models.dart';
 
-/// Tudo que é ajuste ou dado de conta mora aqui, atrás da engrenagem do
-/// perfil. Antes essas seções ficavam empilhadas na tela de perfil e
-/// enterravam o que interessa ao sócio (carteirinha, cupons).
+/// Versão instalada, pra mostrar no rodapé das configurações. Se a
+/// plataforma não souber informar, o rodapé simplesmente não mostra nada.
+final _versaoAppProvider = FutureProvider<String?>((ref) async {
+  try {
+    final info = await PackageInfo.fromPlatform();
+    if (info.version.isEmpty) return null;
+    return 'versão ${info.version}'
+        '${info.buildNumber.isEmpty ? '' : ' (${info.buildNumber})'}';
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Tudo que é ajuste, contato ou dado de conta mora aqui, atrás da
+/// engrenagem do perfil. Antes essas seções ficavam empilhadas na tela de
+/// perfil e enterravam o que interessa ao sócio (carteirinha, cupons).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -33,7 +49,8 @@ class SettingsScreen extends ConsumerWidget {
         title: const Text('Configurações'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/perfil'),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/perfil'),
         ),
       ),
       body: SafeArea(
@@ -98,8 +115,16 @@ class SettingsScreen extends ConsumerWidget {
                     icone: Icons.description_outlined,
                     titulo: 'Termos e privacidade',
                     onTap: () => _abrirTermos(context)),
+                const Padding(
+                  padding: EdgeInsets.only(top: 16),
+                  child: SectionLabel('Fale com a gente'),
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: _FaleConosco(),
+                ),
                 Padding(
-                  padding: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.only(top: 28),
                   child: OutlinedButton.icon(
                     onPressed: () {
                       if (kDemo) {
@@ -124,11 +149,7 @@ class SettingsScreen extends ConsumerWidget {
                     child: const Text('Excluir minha conta'),
                   ),
                 ),
-                const Center(
-                  child: Text('Clube Panda · Tio Panda',
-                      style:
-                          TextStyle(color: PandaColors.cinzaTexto, fontSize: 12)),
-                ),
+                const _Rodape(),
               ]),
             );
           },
@@ -138,6 +159,144 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+
+/// Abre um link externo e avisa se o aparelho não souber tratá-lo — antes
+/// o toque simplesmente não fazia nada e parecia botão quebrado.
+Future<void> _abrirUrl(BuildContext context, String url) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final uri = Uri.parse(url);
+  var ok = false;
+  try {
+    ok = await canLaunchUrl(uri) &&
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    ok = false;
+  }
+  if (!ok) {
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Não deu pra abrir aqui no seu aparelho.')),
+    );
+  }
+}
+
+/// Botões grandes de contato — fáceis pra qualquer idade. Moraram na Home
+/// até virarem item de configuração: contato é suporte, não vitrine.
+class _FaleConosco extends StatelessWidget {
+  const _FaleConosco();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _ContatoBtn(
+                icone: Icons.phone_rounded,
+                label: 'Ligar',
+                onTap: () => _abrirUrl(context, 'tel:${Restaurante.telefone}'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ContatoBtn(
+                icone: Icons.chat_rounded,
+                label: 'WhatsApp',
+                onTap: () => _abrirUrl(
+                    context, 'https://wa.me/${Restaurante.whatsapp}'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ContatoBtn(
+                icone: Icons.location_on_rounded,
+                label: 'Como chegar',
+                onTap: () => _abrirUrl(context,
+                    'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(Restaurante.endereco)}'),
+              ),
+            ),
+          ],
+        ),
+        // Só em debug: lembrete de que os contatos ainda são de exemplo.
+        // Em release o bloco nem existe.
+        if (kDebugMode && Restaurante.contatosPendentes) ...[
+          const SizedBox(height: 12),
+          const Text(
+            '⚠️ Contatos de exemplo — preencher em core/restaurante.dart antes de publicar.',
+            style: TextStyle(
+                color: PandaColors.vermelhoAcento, fontSize: 12, height: 1.3),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ContatoBtn extends StatelessWidget {
+  const _ContatoBtn(
+      {required this.icone, required this.label, required this.onTap});
+  final IconData icone;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? PandaColors.cardDark : PandaColors.branco,
+      borderRadius: PandaRadius.bmd,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: PandaRadius.bmd,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: PandaRadius.bmd,
+            border: Border.all(
+                color:
+                    isDark ? PandaColors.hairlineDark : PandaColors.hairline),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 4),
+          child: Column(
+            children: [
+              Icon(icone, color: PandaColors.laranja, size: 26),
+              const SizedBox(height: 8),
+              // scaleDown: "Como chegar" estoura a coluna na letra Máximo.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: const TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Assinatura do rodapé com a versão instalada — o dono consegue conferir
+/// qual build está na mão do cliente sem abrir a loja.
+class _Rodape extends ConsumerWidget {
+  const _Rodape();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final versao = ref.watch(_versaoAppProvider).value;
+    return Center(
+      child: Text(
+        versao == null
+            ? 'Clube Panda · ${Restaurante.nome}'
+            : 'Clube Panda · ${Restaurante.nome} · $versao',
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: PandaColors.cinzaTexto, fontSize: 12),
+      ),
+    );
+  }
+}
 
 /// Escolha do tema: acompanha o sistema, claro ou escuro.
 /// Três blocos grandes com ícone — mais legível que um toggle pra quem tem
@@ -452,8 +611,15 @@ class _NotificacoesToggle extends ConsumerWidget {
           Switch(
             value: ativas,
             activeThumbColor: PandaColors.laranja,
-            onChanged: (v) =>
-                ref.read(notificationsEnabledProvider.notifier).definir(v),
+            onChanged: (v) async {
+              await ref.read(notificationsEnabledProvider.notifier).definir(v);
+              // O toggle precisa valer de verdade: desligado apaga o token
+              // FCM (o servidor deixa de ter pra quem mandar), ligado
+              // registra de novo. Antes só mudava o texto da tela.
+              if (!kDemo) {
+                await ref.read(pushServiceProvider).aplicarPreferencia(v);
+              }
+            },
           ),
         ],
       ),
@@ -672,8 +838,11 @@ class _EditarDadosSheetState extends ConsumerState<_EditarDadosSheet> {
     if (kDemo) {
       await Future<void>.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
+      // O messenger tem que ser capturado ANTES do pop: depois do pop o
+      // context da sheet já não acha mais o Scaffold e o aviso some.
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Edição desativada no modo demo')),
       );
       return;
@@ -691,8 +860,9 @@ class _EditarDadosSheetState extends ConsumerState<_EditarDadosSheet> {
             _nascimento != null ? Timestamp.fromDate(_nascimento!) : null,
       });
       if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Dados atualizados.')),
       );
     } catch (e) {
@@ -832,7 +1002,7 @@ class _TermosSheet extends StatelessWidget {
             ('Assinatura',
                 'A assinatura pode ser cancelada quando quiser. Os benefícios seguem ativos até o fim do período já pago.'),
             ('Contato',
-                'Dúvidas sobre seus dados ou sobre o Clube? Fale com a gente pelos canais de contato na tela inicial.'),
+                'Dúvidas sobre seus dados ou sobre o Clube? Use os botões da seção "Fale com a gente", aqui mesmo nas configurações.'),
           ].map((s) => _Secao(titulo: s.$1, texto: s.$2)),
           const SizedBox(height: 8),
           OutlinedButton.icon(

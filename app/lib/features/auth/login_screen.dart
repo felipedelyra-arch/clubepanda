@@ -102,13 +102,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _erro = 'Digite seu e-mail para recuperar a senha.');
       return;
     }
-    await ref
-        .read(firebaseAuthProvider)
-        .sendPasswordResetEmail(email: _email.text.trim());
-    if (mounted) {
+    // Sem esse desvio o demo chamava o Firebase, que nem foi inicializado.
+    if (kDemo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Recuperação de senha desativada no modo demo')),
+      );
+      return;
+    }
+    setState(() => _erro = null);
+    try {
+      await ref
+          .read(firebaseAuthProvider)
+          .sendPasswordResetEmail(email: _email.text.trim());
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('E-mail de recuperação enviado.')),
       );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _erro = e.code == 'invalid-email'
+          ? 'E-mail inválido.'
+          : 'Não deu pra enviar o e-mail agora. Tente de novo.');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _erro = 'Não deu pra enviar o e-mail agora. Tente de novo.');
     }
   }
 

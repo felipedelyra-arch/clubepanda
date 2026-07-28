@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
-import '../../core/restaurante.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/dimens.dart';
@@ -23,13 +21,6 @@ String _saudacao() {
   if (h < 12) return 'Bom dia';
   if (h < 18) return 'Boa tarde';
   return 'Boa noite';
-}
-
-Future<void> _abrirUrl(String url) async {
-  final uri = Uri.parse(url);
-  if (await canLaunchUrl(uri)) {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
 }
 
 /// Renderiza imagem de asset local ou de URL (Firestore), com fallback.
@@ -163,17 +154,6 @@ class HomeScreen extends ConsumerWidget {
                     SectionLabel('Como funciona'),
                     SizedBox(height: 16),
                     _ComoFunciona(),
-                  ],
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(top: 34),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionLabel('Fale com a gente'),
-                    SizedBox(height: 16),
-                    _FaleConosco(),
                   ],
                 ),
               ),
@@ -313,82 +293,6 @@ class _PassoLinha extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Botões grandes de contato — fáceis pra qualquer idade.
-class _FaleConosco extends StatelessWidget {
-  const _FaleConosco();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ContatoBtn(
-            icone: Icons.phone_rounded,
-            label: 'Ligar',
-            onTap: () => _abrirUrl('tel:${Restaurante.telefone}'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ContatoBtn(
-            icone: Icons.chat_rounded,
-            label: 'WhatsApp',
-            onTap: () => _abrirUrl('https://wa.me/${Restaurante.whatsapp}'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ContatoBtn(
-            icone: Icons.location_on_rounded,
-            label: 'Como chegar',
-            onTap: () => _abrirUrl(
-                'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(Restaurante.endereco)}'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ContatoBtn extends StatelessWidget {
-  const _ContatoBtn(
-      {required this.icone, required this.label, required this.onTap});
-  final IconData icone;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: isDark ? PandaColors.cardDark : PandaColors.branco,
-      borderRadius: PandaRadius.bmd,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: PandaRadius.bmd,
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: PandaRadius.bmd,
-            border: Border.all(
-                color: isDark ? PandaColors.hairlineDark : PandaColors.hairline),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 18),
-          child: Column(
-            children: [
-              Icon(icone, color: PandaColors.laranja, size: 26),
-              const SizedBox(height: 8),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 12.5, fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

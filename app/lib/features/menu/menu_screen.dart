@@ -17,7 +17,8 @@ class MenuScreen extends StatelessWidget {
         title: const Text('Cardápio'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home'),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/home'),
         ),
       ),
       body: SafeArea(

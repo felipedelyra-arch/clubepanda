@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -20,7 +21,7 @@ final _demoUser = AppUser(
 );
 
 /// Central de notificações (demo) — mais recentes primeiro.
-final _demoNotifications = [
+final _notificacoesIniciais = [
   AppNotification(
     id: 'n1',
     titulo: 'Rodízio com 20% OFF',
@@ -52,6 +53,32 @@ final _demoNotifications = [
     lida: true,
   ),
 ];
+
+/// Notificações do demo em memória. Abrir a central marca todas como lidas —
+/// sem isso o badge do sino ficava preso no número inicial a demo inteira.
+class DemoNotificationsNotifier extends Notifier<List<AppNotification>> {
+  @override
+  List<AppNotification> build() => _notificacoesIniciais;
+
+  void marcarTodasLidas() {
+    if (state.every((n) => n.lida)) return;
+    state = [
+      for (final n in state)
+        AppNotification(
+          id: n.id,
+          titulo: n.titulo,
+          corpo: n.corpo,
+          tipo: n.tipo,
+          criadoEm: n.criadoEm,
+          lida: true,
+        ),
+    ];
+  }
+}
+
+final demoNotificationsProvider =
+    NotifierProvider<DemoNotificationsNotifier, List<AppNotification>>(
+        DemoNotificationsNotifier.new);
 
 final _demoPromotions = [
   Promotion(
@@ -252,7 +279,7 @@ final _demoPlans = [
 /// Histórico de resgates. Os `rw_hist*` são prêmios de campanhas passadas —
 /// não estão mais na lista ativa, então não bloqueiam o resgate ao vivo de
 /// `rw1` e `rw4` (que ficam livres pra demonstrar o fluxo completo).
-final _demoRedemptions = [
+final _resgatesIniciais = [
   Redemption(
     id: 'rd1',
     userId: 'u_demo',
@@ -315,15 +342,30 @@ final _demoRedemptions = [
   ),
 ];
 
+/// Resgates do demo em memória. Resgatar um prêmio ao vivo entra aqui: o
+/// cupom aparece no perfil e o valor soma no "você já economizou" da Home.
+class DemoRedemptionsNotifier extends Notifier<List<Redemption>> {
+  @override
+  List<Redemption> build() => _resgatesIniciais;
+
+  void adicionar(Redemption r) => state = [r, ...state];
+}
+
+final demoRedemptionsProvider =
+    NotifierProvider<DemoRedemptionsNotifier, List<Redemption>>(
+        DemoRedemptionsNotifier.new);
+
 /// Overrides do Riverpod pro modo demo — substituem os streams do Firebase.
 final demoOverrides = [
   authStateProvider.overrideWith((_) => Stream<User?>.value(null)),
   currentUserProvider.overrideWith((_) => Stream.value(_demoUser)),
   promotionsProvider.overrideWith((_) => Stream.value(_demoPromotions)),
-  notificationsProvider.overrideWith((_) => Stream.value(_demoNotifications)),
+  notificationsProvider
+      .overrideWith((ref) => Stream.value(ref.watch(demoNotificationsProvider))),
   rewardsProvider.overrideWith((_) => Stream.value(_demoRewards)),
   plansProvider.overrideWith((_) => Stream.value(_demoPlans)),
-  redemptionsProvider.overrideWith((_) => Stream.value(_demoRedemptions)),
+  redemptionsProvider
+      .overrideWith((ref) => Stream.value(ref.watch(demoRedemptionsProvider))),
   subscriptionProvider.overrideWith((ref) {
     final ativo = ref.watch(demoIsSubscriber);
     return Stream.value(

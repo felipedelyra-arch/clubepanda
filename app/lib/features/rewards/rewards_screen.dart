@@ -337,26 +337,49 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
       _erro = null;
     });
     if (kDemo) {
+      final agora = DateTime.now();
       await Future<void>.delayed(const Duration(milliseconds: 600));
-      if (mounted) {
-        HapticFeedback.mediumImpact();
-        setState(() {
-          _codigo = 'DEMO${DateTime.now().millisecondsSinceEpoch % 100000000}';
-          _loading = false;
-        });
-      }
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      final codigo = 'DEMO${agora.millisecondsSinceEpoch % 100000000}';
+      // O resgate entra na lista de verdade: vira cupom no perfil, soma no
+      // "você já economizou" e trava o prêmio como "já resgatado". Antes só
+      // aparecia o QR e o resto do app seguia como se nada tivesse ocorrido.
+      ref.read(demoRedemptionsProvider.notifier).adicionar(
+            Redemption(
+              id: 'rd_${widget.reward.id}_${agora.millisecondsSinceEpoch}',
+              userId: 'u_demo',
+              rewardId: widget.reward.id,
+              rewardTitulo: widget.reward.titulo,
+              codigo: codigo,
+              status: 'disponivel',
+              criadoEm: agora,
+              valor: widget.reward.valor,
+            ),
+          );
+      setState(() {
+        _codigo = codigo;
+        _loading = false;
+      });
       return;
     }
     try {
       final callable =
           ref.read(functionsProvider).httpsCallable('redeemReward');
       final res = await callable.call({'rewardId': widget.reward.id});
+      if (!mounted) return;
       HapticFeedback.mediumImpact();
       logEventoUi(ref, 'reward_redeemed',
           params: {'reward_id': widget.reward.id});
       setState(() => _codigo = res.data['codigo'] as String);
     } on FirebaseFunctionsException catch (e) {
-      setState(() => _erro = e.message ?? 'Não foi possível resgatar.');
+      if (mounted) {
+        setState(() => _erro = e.message ?? 'Não foi possível resgatar.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _erro = 'Não foi possível resgatar. Tente de novo.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
