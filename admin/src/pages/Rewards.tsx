@@ -7,19 +7,21 @@ import { toast } from "sonner";
 import { db, storage, functions } from "../lib/firebase";
 import { useCollection } from "../lib/useCollection";
 import type { Reward, Redemption, RewardTipo } from "../lib/types";
-import { Card, Button, Badge, Spinner, EmptyState } from "../components/ui";
+import {
+  Card,
+  Button,
+  Badge,
+  Spinner,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+} from "../components/ui";
 import { Modal, ConfirmDialog, Field, inputBase } from "../components/Modal";
 import { demoBlock } from "../lib/demo";
+import { toLocalInput } from "../lib/oferta";
 
 const tipos: RewardTipo[] = ["rodizio", "prato", "sobremesa", "cupom"];
 const vazio: Partial<Reward> = { titulo: "", descricao: "", tipo: "cupom", estoque: 1, resgatavelAte: null };
-
-/** Date -> valor de <input type="datetime-local"> (fuso local). */
-function toLocalInput(d?: Date | null): string {
-  if (!d) return "";
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
-}
 
 /** Formata o prazo pra exibição. */
 function fmtPrazo(d?: Date | null): string {
@@ -28,7 +30,7 @@ function fmtPrazo(d?: Date | null): string {
 }
 
 export function Rewards() {
-  const { data, loading } = useCollection<Reward>("rewards");
+  const { data, loading, error } = useCollection<Reward>("rewards");
   const { data: redemptions } = useCollection<Redemption>("redemptions");
   const [editando, setEditando] = useState<Partial<Reward> | null>(null);
   const [excluir, setExcluir] = useState<Reward | null>(null);
@@ -77,22 +79,37 @@ export function Rewards() {
   }
 
   if (loading) return <Spinner />;
+  if (error) return <ErrorState mensagem={error} />;
 
   const pendentes = redemptions.filter((r) => r.status === "disponivel");
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Premiações</h1>
-        <Button onClick={() => setEditando({ ...vazio })}>
-          <Plus size={18} /> Nova premiação
-        </Button>
-      </div>
+      <PageHeader
+        titulo="Premiações"
+        descricao={
+          pendentes.length
+            ? `${pendentes.length} resgate(s) esperando validação no caixa`
+            : "Prêmios que o restaurante libera pros sócios"
+        }
+        acao={
+          <Button onClick={() => setEditando({ ...vazio })}>
+            <Plus size={18} /> Nova premiação
+          </Button>
+        }
+      />
 
       {data.length === 0 ? (
-        <EmptyState mensagem="Nenhuma premiação cadastrada." />
+        <EmptyState
+          mensagem="Nenhuma premiação cadastrada. Cadastre um prêmio pros sócios resgatarem."
+          acao={
+            <Button onClick={() => setEditando({ ...vazio })}>
+              <Plus size={18} /> Nova premiação
+            </Button>
+          }
+        />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.map((r) => (
             <Card key={r.id}>
               <div className="flex items-start justify-between gap-2">
@@ -118,34 +135,32 @@ export function Rewards() {
         </div>
       )}
 
-      <h2 className="mt-10 mb-4 text-lg font-bold">Resgates pendentes de validação</h2>
+      <h2 className="mt-10 mb-1 text-lg font-bold">Resgates pra validar</h2>
+      <p className="mb-4 text-sm text-panda-cinza-texto">
+        O cliente mostra o código no caixa. Confira e valide aqui.
+      </p>
       {pendentes.length === 0 ? (
-        <EmptyState mensagem="Nenhum resgate aguardando validação." />
+        <EmptyState mensagem="Nada pra validar agora." />
       ) : (
-        <Card className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-black/5 dark:bg-white/5 text-left text-panda-cinza-texto">
-              <tr>
-                <th className="p-3">Prêmio</th>
-                <th className="p-3">Código</th>
-                <th className="p-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendentes.map((r) => (
-                <tr key={r.id} className="border-t border-black/5 dark:border-white/5">
-                  <td className="p-3">{r.rewardTitulo}</td>
-                  <td className="p-3 font-mono">{r.codigo}</td>
-                  <td className="p-3 text-right">
-                    <Button variant="outline" onClick={() => validar(r.codigo)}>
-                      <CheckCircle size={16} /> Validar
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <div className="flex flex-col gap-2">
+          {pendentes.map((r) => (
+            // Um cartão por resgate, com o código grande e o botão de largura
+            // cheia: é o que o dono faz de pé no caixa, com o celular na mão.
+            <Card key={r.id}>
+              <div className="text-sm text-panda-cinza-texto">{r.rewardTitulo}</div>
+              <div className="tabular mt-1 font-mono text-xl font-bold tracking-wider">
+                {r.codigo}
+              </div>
+              <Button
+                variant="outline"
+                className="mt-3 w-full sm:w-auto"
+                onClick={() => validar(r.codigo)}
+              >
+                <CheckCircle size={16} /> Validar resgate
+              </Button>
+            </Card>
+          ))}
+        </div>
       )}
 
       <Modal open={!!editando} onClose={() => setEditando(null)} title={editando?.id ? "Editar premiação" : "Nova premiação"}>
@@ -162,7 +177,7 @@ export function Rewards() {
                 {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-x-3 sm:grid-cols-2">
               <Field label="Estoque">
                 <input type="number" className={inputBase} value={editando.estoque ?? 0} onChange={(e) => setEditando({ ...editando, estoque: Number(e.target.value) })} />
               </Field>

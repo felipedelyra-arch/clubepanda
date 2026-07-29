@@ -3,7 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
 import { functions } from "../lib/firebase";
-import { Card, Button } from "../components/ui";
+import { Card, Button, PageHeader } from "../components/ui";
 import { Field, inputBase } from "../components/Modal";
 import { demoBlock } from "../lib/demo";
 
@@ -32,7 +32,10 @@ export function Notifications() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="mb-6 text-2xl font-bold">Notificações</h1>
+      <PageHeader
+        titulo="Notificações"
+        descricao="Manda um aviso pra tela de quem tem o app instalado."
+      />
       <Card>
         <Field label="Título"><input className={inputBase} value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="🐼 Novidade no Clube Panda" /></Field>
         <Field label="Mensagem"><textarea className={inputBase} rows={3} value={corpo} onChange={(e) => setCorpo(e.target.value)} placeholder="Rodízio com 20% off nesta semana!" /></Field>

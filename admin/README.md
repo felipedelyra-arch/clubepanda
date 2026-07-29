@@ -26,14 +26,19 @@ script em `firebase/scripts/set-first-admin.js`; depois gerencie em Configuraç�
 | Rota | Tela | Função |
 |---|---|---|
 | `/login` | Login | e-mail/senha; bloqueia não-admin ("Acesso negado"); recuperar senha |
-| `/` | Dashboard | membros ativos, novos/mês, MRR, cancelamentos, resgates + 2 gráficos |
+| `/` | Dashboard | membros ativos, novos/mês, MRR, cancelamentos, resgates + gráficos dos últimos 6 meses |
 | `/promocoes` | Promoções | CRUD + upload de imagem (Storage) + ativa/só-assinantes |
-| `/premiacoes` | Premiações | CRUD + estoque/pontos + validar resgates (QR/código) |
+| `/premiacoes` | Premiações | CRUD + estoque + prazo de resgate + validar resgates (código) |
 | `/planos` | Planos | CRUD + `stripePriceId` para checkout recorrente |
-| `/membros` | Membros | tabela + busca + ajustar pontos |
-| `/pagamentos` | Financeiro | transações, filtro por método, exportar CSV, total |
+| `/membros` | Membros | tabela + busca; clicar na linha abre a ficha (assinatura, pagamentos, resgates) |
+| `/pagamentos` | Financeiro | transações com nome do cliente, filtro por método, exportar CSV, total |
 | `/notificacoes` | Notificações | enviar push (todos ou só assinantes) via Cloud Function |
-| `/configuracoes` | Config | dados do restaurante + conceder/revogar admin |
+| `/configuracoes` | Config | dados do restaurante (`config/restaurante`) + conceder/revogar admin |
+
+O doc `config/restaurante` espelha `app/lib/core/restaurante.dart` (telefone,
+WhatsApp, endereço, política, termos, links das lojas). O painel avisa quantos
+campos ainda estão com valor de exemplo. **O app ainda lê as constantes
+compiladas** — passar a ler do Firestore é trabalho pendente no lado do app.
 
 ## Tempo real
 

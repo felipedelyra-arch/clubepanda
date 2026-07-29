@@ -12,21 +12,27 @@ import {
 } from "recharts";
 import { Users, TrendingUp, DollarSign, UserMinus, Gift } from "lucide-react";
 import { useCollection } from "../lib/useCollection";
-import { Card, Spinner } from "../components/ui";
+import { Card, Spinner, ErrorState, PageHeader } from "../components/ui";
 import type { AppUser, Subscription, Payment, Redemption } from "../lib/types";
+import { brl } from "../lib/format";
 
 const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+/** Chave ano-mês. Comparar só o mês somaria jan/2025 com jan/2026. */
+const chaveMes = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
 
 function Metric({ icon: Icon, label, value, color }: { icon: typeof Users; label: string; value: string; color: string }) {
   return (
     <Card>
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl p-2.5" style={{ background: `${color}22`, color }}>
-          <Icon size={22} />
+      {/* Empilhado no celular: lado a lado, o rótulo de duas palavras quebrava
+          e desalinhava a altura dos cartões vizinhos. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="w-fit rounded-xl p-2.5" style={{ background: `${color}22`, color }}>
+          <Icon size={20} />
         </div>
-        <div>
-          <div className="text-sm text-panda-cinza-texto">{label}</div>
-          <div className="text-2xl font-bold">{value}</div>
+        <div className="min-w-0">
+          <div className="text-xs text-panda-cinza-texto sm:text-sm">{label}</div>
+          <div className="tabular text-xl font-bold sm:text-2xl">{value}</div>
         </div>
       </div>
     </Card>
@@ -34,35 +40,48 @@ function Metric({ icon: Icon, label, value, color }: { icon: typeof Users; label
 }
 
 export function Dashboard() {
-  const { data: users, loading: lu } = useCollection<AppUser>("users");
-  const { data: subs } = useCollection<Subscription>("subscriptions");
-  const { data: payments } = useCollection<Payment>("payments");
-  const { data: redemptions } = useCollection<Redemption>("redemptions");
+  const { data: users, loading: lu, error: eu } = useCollection<AppUser>("users");
+  const { data: subs, error: es } = useCollection<Subscription>("subscriptions");
+  const { data: payments, error: ep } = useCollection<Payment>("payments");
+  const { data: redemptions, error: er } = useCollection<Redemption>("redemptions");
+  const erro = eu || es || ep || er;
 
   const stats = useMemo(() => {
     const now = new Date();
     const ativos = subs.filter((s) => s.status === "active");
     const cancelados = subs.filter((s) => s.status === "canceled");
     const novosMes = users.filter(
-      (u) => u.criadoEm && u.criadoEm.getMonth() === now.getMonth() && u.criadoEm.getFullYear() === now.getFullYear()
+      (u) => u.criadoEm && chaveMes(u.criadoEm) === chaveMes(now)
     );
     const pagosMes = payments.filter(
-      (p) => p.data && p.data.getMonth() === now.getMonth() && p.status === "aprovado"
+      (p) => p.data && chaveMes(p.data) === chaveMes(now) && p.status === "aprovado"
     );
     const mrr = pagosMes.reduce((acc, p) => acc + (p.valor || 0), 0);
 
-    // Receita por mês (últimos 6)
-    const receita = meses.map((m, i) => ({
-      mes: m,
+    // Janela móvel dos últimos 6 meses, terminando no mês atual.
+    const janela = Array.from({ length: 6 }, (_, k) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (5 - k), 1);
+      const outroAno = d.getFullYear() !== now.getFullYear();
+      return {
+        chave: chaveMes(d),
+        // Vira do ano: rotula "Dez/25" pra não parecer o dezembro deste ano.
+        rotulo: meses[d.getMonth()] + (outroAno ? `/${String(d.getFullYear()).slice(2)}` : ""),
+        // Último instante do mês, pro acumulado de membros.
+        fim: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
+    });
+
+    const receita = janela.map((j) => ({
+      mes: j.rotulo,
       valor: payments
-        .filter((p) => p.data && p.data.getMonth() === i && p.status === "aprovado")
+        .filter((p) => p.data && chaveMes(p.data) === j.chave && p.status === "aprovado")
         .reduce((a, p) => a + (p.valor || 0), 0),
     }));
 
-    // Crescimento de membros por mês
-    const crescimento = meses.map((m, i) => ({
-      mes: m,
-      membros: users.filter((u) => u.criadoEm && u.criadoEm.getMonth() <= i).length,
+    // Acumulado: quantos membros existiam no fim de cada mês da janela.
+    const crescimento = janela.map((j) => ({
+      mes: j.rotulo,
+      membros: users.filter((u) => u.criadoEm && u.criadoEm <= j.fim).length,
     }));
 
     return {
@@ -78,12 +97,15 @@ export function Dashboard() {
 
   if (lu) return <Spinner />;
 
-  const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">Dashboard</h1>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <PageHeader titulo="Início" descricao="Como o Clube está indo neste mês" />
+      {erro && (
+        <div className="mb-6">
+          <ErrorState mensagem={erro} />
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         <Metric icon={Users} label="Membros ativos" value={String(stats.ativos)} color="#F47A20" />
         <Metric icon={TrendingUp} label="Novos no mês" value={String(stats.novosMes)} color="#2FBF71" />
         <Metric icon={DollarSign} label="MRR" value={brl(stats.mrr)} color="#F47A20" />
@@ -91,10 +113,10 @@ export function Dashboard() {
         <Metric icon={Gift} label="Resgates" value={String(stats.resgates)} color="#2FBF71" />
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="mb-4 font-semibold">Receita por mês</h2>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={stats.receita}>
               <defs>
                 <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
@@ -103,8 +125,8 @@ export function Dashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-              <XAxis dataKey="mes" fontSize={12} />
-              <YAxis fontSize={12} />
+              <XAxis dataKey="mes" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis fontSize={11} width={44} tickLine={false} axisLine={false} />
               <Tooltip formatter={(v) => brl(Number(v))} />
               <Area type="monotone" dataKey="valor" stroke="#F47A20" fill="url(#rev)" />
             </AreaChart>
@@ -113,11 +135,11 @@ export function Dashboard() {
 
         <Card>
           <h2 className="mb-4 font-semibold">Crescimento de membros</h2>
-          <ResponsiveContainer width="100%" height={260}>
+          <ResponsiveContainer width="100%" height={220}>
             <LineChart data={stats.crescimento}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-              <XAxis dataKey="mes" fontSize={12} />
-              <YAxis fontSize={12} />
+              <XAxis dataKey="mes" fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis fontSize={11} width={44} tickLine={false} axisLine={false} />
               <Tooltip />
               <Line type="monotone" dataKey="membros" stroke="#2FBF71" strokeWidth={2} dot={false} />
             </LineChart>

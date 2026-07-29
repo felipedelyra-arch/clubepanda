@@ -30,7 +30,8 @@ final currentUserProvider = StreamProvider<AppUser?>((ref) {
       .map((d) => d.exists ? AppUser.fromDoc(d) : null);
 });
 
-/// Promoções ativas em tempo real.
+/// Promoções ativas em tempo real. Vem tudo que o dono deixou ligado — a
+/// janela de validade é aplicada em [promocoesVigentesProvider].
 final promotionsProvider = StreamProvider<List<Promotion>>((ref) {
   return ref
       .watch(firestoreProvider)
@@ -38,6 +39,31 @@ final promotionsProvider = StreamProvider<List<Promotion>>((ref) {
       .where('ativa', isEqualTo: true)
       .snapshots()
       .map((s) => s.docs.map(Promotion.fromDoc).toList());
+});
+
+/// Relógio do app: emite agora e a cada 30s.
+///
+/// Sem isso uma oferta que vence com o app aberto continuaria na tela até o
+/// Firestore emitir de novo — e ele não emite, porque nada mudou no banco.
+final agoraProvider = StreamProvider<DateTime>((ref) async* {
+  yield DateTime.now();
+  yield* Stream.periodic(const Duration(seconds: 30), (_) => DateTime.now());
+});
+
+/// Promoções no ar neste instante: dentro da janela que o dono definiu.
+/// Ordena por quem termina antes (nulo = sem prazo, vai pro fim).
+final promocoesVigentesProvider = Provider<AsyncValue<List<Promotion>>>((ref) {
+  final agora = ref.watch(agoraProvider).value ?? DateTime.now();
+  return ref.watch(promotionsProvider).whenData((list) {
+    final vigentes = list.where((p) => p.vigenteEm(agora)).toList();
+    vigentes.sort((a, b) {
+      if (a.validadeFim == null && b.validadeFim == null) return 0;
+      if (a.validadeFim == null) return 1;
+      if (b.validadeFim == null) return -1;
+      return a.validadeFim!.compareTo(b.validadeFim!);
+    });
+    return vigentes;
+  });
 });
 
 /// Premiações disponíveis em tempo real.

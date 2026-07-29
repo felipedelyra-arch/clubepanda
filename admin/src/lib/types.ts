@@ -14,7 +14,11 @@ export interface Plan {
   id: string;
   nome: string;
   preco: number;
-  intervalo: "mensal" | "trimestral" | "anual";
+  /**
+   * Aparece cru no app: `R$ 4,90 / mês` (plans_screen.dart). Por isso é o
+   * substantivo do período, não o adjetivo — "mensal" imprimiria "/ mensal".
+   */
+  intervalo: "mês" | "trimestre" | "ano";
   beneficios: string[];
   recomendado?: boolean;
   stripePriceId?: string | null;
@@ -62,6 +66,24 @@ export interface Subscription {
   status: "active" | "canceled" | "past_due";
   proximaCobranca?: Date | null;
   formaPagamento?: string | null;
+}
+
+/**
+ * Doc `config/restaurante`. Espelha `app/lib/core/restaurante.dart` — a ideia é
+ * o app passar a ler daqui em vez das constantes compiladas.
+ */
+export interface Restaurante {
+  nome: string;
+  /** Telefone pra ligação, só dígitos com DDI: 5514... */
+  telefone: string;
+  /** WhatsApp no formato wa.me, só dígitos com DDI. */
+  whatsapp: string;
+  /** Endereço usado na busca do Google Maps. */
+  endereco: string;
+  politicaPrivacidadeUrl: string;
+  termosUrl: string;
+  playStoreUrl: string;
+  appStoreUrl: string;
 }
 
 export interface Payment {

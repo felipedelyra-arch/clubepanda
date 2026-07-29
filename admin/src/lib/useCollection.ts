@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import {
   collection,
+  doc,
   onSnapshot,
   query,
   type QueryConstraint,
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { IS_DEMO, demoData } from "./demo";
+import { IS_DEMO, demoData, demoDocs } from "./demo";
 
 /** Converte Timestamps do Firestore em Date recursivamente (nível 1). */
 function normalize<T>(id: string, data: Record<string, unknown>): T {
@@ -53,6 +54,39 @@ export function useCollection<T>(
     );
     return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path]);
+
+  return { data, loading, error };
+}
+
+/** Assina um documento único em tempo real. `path` = "colecao/id". */
+export function useDoc<T>(
+  path: string
+): { data: T | null; loading: boolean; error: string | null } {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (IS_DEMO) {
+      setData((demoDocs[path] as T) ?? null);
+      setLoading(false);
+      return;
+    }
+
+    const [col, id] = path.split("/");
+    const unsub = onSnapshot(
+      doc(db, col, id),
+      (snap) => {
+        setData(snap.exists() ? normalize<T>(snap.id, snap.data()) : null);
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      }
+    );
+    return unsub;
   }, [path]);
 
   return { data, loading, error };

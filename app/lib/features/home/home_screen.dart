@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final promos = ref.watch(promotionsProvider);
+    final promos = ref.watch(promocoesVigentesProvider);
     final isSub = ref.watch(isSubscriberProvider);
     final primeiroNome = user.value?.nome.split(' ').first ?? 'panda';
 
@@ -128,7 +128,7 @@ class HomeScreen extends ConsumerWidget {
                         if (visiveis.isEmpty) {
                           return const EmptyView(
                             mensagem:
-                                'Nenhuma promoção agora.\nVolte logo — tem novidade toda semana.',
+                                'Nenhuma promoção no ar agora.\nVolte logo — tem novidade toda semana.',
                             icone: Icons.local_offer_outlined,
                           );
                         }
@@ -657,6 +657,65 @@ class _AssineBanner extends StatelessWidget {
 
 /// Promoção em destaque. Com imagem: foto + gradiente + texto branco.
 /// Sem imagem: card suave (laranja claro), texto escuro, acento discreto.
+/// Rótulo curto do prazo da oferta. Nulo quando não tem fim marcado.
+String? _rotuloPrazo(DateTime? fim) {
+  if (fim == null) return null;
+  final agora = DateTime.now();
+  final hoje = DateTime(agora.year, agora.month, agora.day);
+  final diaFim = DateTime(fim.year, fim.month, fim.day);
+  final dias = diaFim.difference(hoje).inDays;
+  final hora = fim.minute == 0
+      ? '${fim.hour}h'
+      : '${fim.hour}h${fim.minute.toString().padLeft(2, '0')}';
+  if (dias == 0) return 'Termina hoje às $hora';
+  if (dias == 1) return 'Termina amanhã às $hora';
+  final d = fim.day.toString().padLeft(2, '0');
+  final m = fim.month.toString().padLeft(2, '0');
+  return 'Até $d/$m às $hora';
+}
+
+/// Selo de prazo. Fica vermelho no último dia pra dar urgência.
+class _PrazoPill extends StatelessWidget {
+  const _PrazoPill({required this.fim, this.sobreImagem = false});
+  final DateTime fim;
+  final bool sobreImagem;
+
+  @override
+  Widget build(BuildContext context) {
+    final rotulo = _rotuloPrazo(fim);
+    if (rotulo == null) return const SizedBox.shrink();
+    final ultimoDia = fim.difference(DateTime.now()).inHours < 24;
+    final cor =
+        ultimoDia ? PandaColors.vermelhoAcento : PandaColors.laranjaEscuro;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: sobreImagem
+            ? Colors.black.withValues(alpha: 0.45)
+            : cor.withValues(alpha: 0.12),
+        borderRadius: PandaRadius.bxs,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.schedule_rounded,
+              size: 13, color: sobreImagem ? Colors.white : cor),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(rotulo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: sobreImagem ? Colors.white : cor)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PromoHero extends StatelessWidget {
   const _PromoHero({required this.promo});
   final Promotion promo;
@@ -722,6 +781,14 @@ class _PromoHero extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.85), height: 1.35)),
+                if (promo.validadeFim != null) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _PrazoPill(
+                        fim: promo.validadeFim!, sobreImagem: true),
+                  ),
+                ],
               ],
             ),
           ),
@@ -771,6 +838,13 @@ class _PromoHero extends StatelessWidget {
           const SizedBox(height: 6),
           Text(promo.descricao,
               style: const TextStyle(color: PandaColors.preto, height: 1.4)),
+          if (promo.validadeFim != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: _PrazoPill(fim: promo.validadeFim!),
+            ),
+          ],
         ],
       ),
     );
@@ -824,6 +898,10 @@ class _PromoCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         color: PandaColors.cinzaTexto, fontSize: 13, height: 1.3)),
+                if (promo.validadeFim != null) ...[
+                  const SizedBox(height: 6),
+                  _PrazoPill(fim: promo.validadeFim!),
+                ],
               ],
             ),
           ),

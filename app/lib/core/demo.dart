@@ -80,6 +80,9 @@ final demoNotificationsProvider =
     NotifierProvider<DemoNotificationsNotifier, List<AppNotification>>(
         DemoNotificationsNotifier.new);
 
+/// Promoções do demo. Cobre os quatro casos da janela de validade pra dar
+/// pra conferir na tela que o prazo funciona: no ar terminando hoje, no ar
+/// com folga, sem prazo, agendada (não aparece) e expirada (não aparece).
 final _demoPromotions = [
   Promotion(
     id: 'promo1',
@@ -88,6 +91,7 @@ final _demoPromotions = [
     ativa: true,
     apenasAssinantes: true,
     imagem: 'assets/images/hero.jpg',
+    validadeFim: DateTime.now().add(const Duration(hours: 6)),
   ),
   Promotion(
     id: 'promo2',
@@ -96,6 +100,7 @@ final _demoPromotions = [
     ativa: true,
     apenasAssinantes: false,
     imagem: 'assets/images/nigiri_maracuja.jpg',
+    validadeFim: DateTime.now().add(const Duration(days: 3)),
   ),
   Promotion(
     id: 'promo3',
@@ -104,6 +109,26 @@ final _demoPromotions = [
     ativa: true,
     apenasAssinantes: false,
     imagem: 'assets/images/combinado.jpg',
+  ),
+  // Agendada: começa amanhã. Não deve aparecer na Home hoje.
+  Promotion(
+    id: 'promo4',
+    titulo: 'Festival de sashimi',
+    descricao: 'Começa amanhã — sashimi especial a preço de entrada.',
+    ativa: true,
+    apenasAssinantes: false,
+    validadeInicio: DateTime.now().add(const Duration(days: 1)),
+    validadeFim: DateTime.now().add(const Duration(days: 5)),
+  ),
+  // Expirada: terminou ontem. Não deve aparecer na Home.
+  Promotion(
+    id: 'promo5',
+    titulo: 'Quarta do hot roll',
+    descricao: 'Promoção da semana passada, já encerrada.',
+    ativa: true,
+    apenasAssinantes: false,
+    validadeInicio: DateTime.now().subtract(const Duration(days: 8)),
+    validadeFim: DateTime.now().subtract(const Duration(days: 1)),
   ),
 ];
 

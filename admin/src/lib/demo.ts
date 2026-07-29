@@ -11,6 +11,7 @@ import type {
   Redemption,
   Subscription,
   Payment,
+  Restaurante,
 } from "./types";
 
 export const IS_DEMO = import.meta.env.VITE_DEMO === "true";
@@ -43,27 +44,35 @@ const demoUsers: AppUser[] = [
   { uid: "u_admin", nome: "Tio Panda (você)", email: "admin@tiopanda.com.br", telefone: "", role: "admin", criadoEm: mes(0, 1) },
 ];
 
+// Plano é um só, então toda assinatura aponta pra `p_mensal`.
 const demoSubs: Subscription[] = [
   { id: "s1", userId: "u_ana", planId: "p_mensal", status: "active", proximaCobranca: diasAtras(-20), formaPagamento: "cartao" },
-  { id: "s2", userId: "u_carla", planId: "p_anual", status: "active", proximaCobranca: diasAtras(-200), formaPagamento: "cartao" },
+  { id: "s2", userId: "u_carla", planId: "p_mensal", status: "active", proximaCobranca: diasAtras(-12), formaPagamento: "cartao" },
   { id: "s3", userId: "u_elis", planId: "p_mensal", status: "active", proximaCobranca: diasAtras(-8), formaPagamento: "pix" },
-  { id: "s4", userId: "u_gina", planId: "p_trimestral", status: "active", proximaCobranca: diasAtras(-60), formaPagamento: "cartao" },
+  { id: "s4", userId: "u_gina", planId: "p_mensal", status: "active", proximaCobranca: diasAtras(-25), formaPagamento: "cartao" },
   { id: "s5", userId: "u_bruno", planId: "p_mensal", status: "canceled", proximaCobranca: null, formaPagamento: "cartao" },
 ];
 
+// Mensalidade única de R$ 4,90.
 const demoPayments: Payment[] = [
-  { id: "pay1", userId: "u_ana", valor: 49.9, metodo: "cartao", status: "aprovado", gatewayRef: "in_1AbcDef", data: mes(now.getMonth()) },
-  { id: "pay2", userId: "u_carla", valor: 499.0, metodo: "cartao", status: "aprovado", gatewayRef: "in_2GhiJkl", data: mes(now.getMonth(), 2) },
-  { id: "pay3", userId: "u_elis", valor: 49.9, metodo: "pix", status: "aprovado", gatewayRef: "pix_abc123", data: mes(now.getMonth(), 4) },
-  { id: "pay4", userId: "u_gina", valor: 129.9, metodo: "cartao", status: "aprovado", gatewayRef: "in_3MnoPqr", data: mes(Math.max(0, now.getMonth() - 1), 15) },
-  { id: "pay5", userId: "u_bruno", valor: 49.9, metodo: "cartao", status: "recusado", gatewayRef: "in_4StuVwx", data: mes(Math.max(0, now.getMonth() - 1), 18) },
-  { id: "pay6", userId: "u_ana", valor: 49.9, metodo: "cartao", status: "aprovado", gatewayRef: "in_5YzaBcd", data: mes(Math.max(0, now.getMonth() - 2), 10) },
+  { id: "pay1", userId: "u_ana", valor: 4.9, metodo: "cartao", status: "aprovado", gatewayRef: "in_1AbcDef", data: mes(now.getMonth()) },
+  { id: "pay2", userId: "u_carla", valor: 4.9, metodo: "cartao", status: "aprovado", gatewayRef: "in_2GhiJkl", data: mes(now.getMonth(), 2) },
+  { id: "pay3", userId: "u_elis", valor: 4.9, metodo: "pix", status: "aprovado", gatewayRef: "pix_abc123", data: mes(now.getMonth(), 4) },
+  { id: "pay4", userId: "u_gina", valor: 4.9, metodo: "cartao", status: "aprovado", gatewayRef: "in_3MnoPqr", data: mes(Math.max(0, now.getMonth() - 1), 15) },
+  { id: "pay5", userId: "u_bruno", valor: 4.9, metodo: "cartao", status: "recusado", gatewayRef: "in_4StuVwx", data: mes(Math.max(0, now.getMonth() - 1), 18) },
+  { id: "pay6", userId: "u_ana", valor: 4.9, metodo: "cartao", status: "aprovado", gatewayRef: "in_5YzaBcd", data: mes(Math.max(0, now.getMonth() - 2), 10) },
 ];
 
+const horas = (n: number) => new Date(now.getTime() + n * 60 * 60 * 1000);
+
+// Espelha os mesmos casos do demo do app (app/lib/core/demo.dart): no ar
+// terminando hoje, no ar com folga, sem prazo, agendada e encerrada.
 const demoPromotions: Promotion[] = [
-  { id: "promo1", titulo: "Rodízio com 20% OFF", descricao: "Toda quarta, rodízio completo com desconto pra assinantes.", ativa: true, apenasAssinantes: true, imagem: null },
-  { id: "promo2", titulo: "Temaki em dobro", descricao: "Compre 1 temaki e leve 2 na sexta-feira.", ativa: true, apenasAssinantes: false, imagem: null },
-  { id: "promo3", titulo: "Sobremesa grátis", descricao: "Sorvete de matchá grátis acima de R$ 80.", ativa: false, apenasAssinantes: false, imagem: null },
+  { id: "promo1", titulo: "Rodízio com 20% OFF", descricao: "Toda quarta, rodízio completo com desconto pra assinantes.", ativa: true, apenasAssinantes: true, imagem: null, validadeInicio: null, validadeFim: horas(6) },
+  { id: "promo2", titulo: "Temaki em dobro", descricao: "Compre 1 temaki e leve 2 na sexta-feira.", ativa: true, apenasAssinantes: false, imagem: null, validadeInicio: null, validadeFim: horas(72) },
+  { id: "promo3", titulo: "Combo família", descricao: "40 peças + 2 refrigerantes por um preço especial.", ativa: true, apenasAssinantes: false, imagem: null, validadeInicio: null, validadeFim: null },
+  { id: "promo4", titulo: "Festival de sashimi", descricao: "Começa amanhã — sashimi especial a preço de entrada.", ativa: true, apenasAssinantes: false, imagem: null, validadeInicio: horas(24), validadeFim: horas(120) },
+  { id: "promo5", titulo: "Quarta do hot roll", descricao: "Promoção da semana passada, já encerrada.", ativa: true, apenasAssinantes: false, imagem: null, validadeInicio: horas(-192), validadeFim: horas(-24) },
 ];
 
 const demoRewards: Reward[] = [
@@ -79,11 +88,39 @@ const demoRedemptions: Redemption[] = [
   { id: "rd3", userId: "u_gina", rewardId: "rw3", rewardTitulo: "Sorvete de matchá", codigo: "9Z8Y7X6W5V4U", status: "usado", criadoEm: diasAtras(9) },
 ];
 
+// Plano único de R$ 4,90/mês — mesmos dados de `app/lib/core/demo.dart`.
 const demoPlans: Plan[] = [
-  { id: "p_mensal", nome: "Mensal", preco: 49.9, intervalo: "mensal", beneficios: ["Promoções exclusivas", "Prêmios liberados pelo restaurante", "1 sobremesa grátis/mês"], recomendado: false, stripePriceId: "price_demo_mensal" },
-  { id: "p_trimestral", nome: "Trimestral", preco: 129.9, intervalo: "trimestral", beneficios: ["Tudo do Mensal", "Rodízio grátis no aniversário", "Prioridade no delivery"], recomendado: true, stripePriceId: "price_demo_tri" },
-  { id: "p_anual", nome: "Anual", preco: 499.0, intervalo: "anual", beneficios: ["Tudo do Trimestral", "2 rodízios grátis", "Brinde de boas-vindas"], recomendado: false, stripePriceId: "price_demo_anual" },
+  {
+    id: "p_mensal",
+    nome: "Clube Panda",
+    preco: 4.9,
+    intervalo: "mês",
+    beneficios: [
+      "Descontos e promoções exclusivas todo mês",
+      "Prêmios e pratos liberados pelo restaurante",
+      "Sobremesa grátis no seu aniversário",
+      "Sem fidelidade — cancele quando quiser",
+    ],
+    recomendado: true,
+    stripePriceId: "price_demo_mensal",
+  },
 ];
+
+const demoRestaurante: Restaurante = {
+  nome: "Tio Panda",
+  telefone: "551430000000",
+  whatsapp: "5514990000000",
+  endereco: "Tio Panda restaurante",
+  politicaPrivacidadeUrl: "https://tiopanda.com.br/privacidade",
+  termosUrl: "https://tiopanda.com.br/termos",
+  playStoreUrl: "https://play.google.com/store/apps/details?id=com.tiopanda.clube",
+  appStoreUrl: "https://apps.apple.com/app/id000000000",
+};
+
+// Mapa caminho do documento -> dado mock.
+export const demoDocs: Record<string, unknown> = {
+  "config/restaurante": demoRestaurante,
+};
 
 // Mapa caminho da coleção -> dados mock.
 export const demoData: Record<string, unknown[]> = {

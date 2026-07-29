@@ -48,6 +48,8 @@ class RewardsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final rewards = ref.watch(rewardsProvider);
     final isSub = ref.watch(isSubscriberProvider);
+    // Relógio: sem ele o "Prazo encerrado" só apareceria ao sair e voltar.
+    ref.watch(agoraProvider);
     final redemptions = ref.watch(redemptionsProvider).value ?? const [];
     // Prêmios que este usuário já resgatou (limite 1 por pessoa).
     final resgatados = redemptions.map((r) => r.rewardId).toSet();

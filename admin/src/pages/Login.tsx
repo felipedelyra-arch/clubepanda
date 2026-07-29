@@ -34,7 +34,9 @@ export function Login() {
   const acessoNegado = !loading && user && !isAdmin;
 
   return (
-    <div className="flex h-screen items-center justify-center p-6">
+    // min-h + centro: no celular o teclado abrindo encolhe a viewport e o
+    // h-screen cortava o botão Entrar.
+    <div className="flex min-h-full items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
           <PandaLogo size={64} />
@@ -53,7 +55,7 @@ export function Login() {
               placeholder="E-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="rounded-xl bg-panda-cinza dark:bg-[#262626] px-4 py-3 outline-none focus:ring-2 focus:ring-panda-laranja"
+              className="min-h-12 rounded-xl bg-panda-cinza px-4 py-3 outline-none focus:ring-2 focus:ring-panda-laranja dark:bg-panda-superficie-dark"
               required
             />
             <input
@@ -61,7 +63,7 @@ export function Login() {
               placeholder="Senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="rounded-xl bg-panda-cinza dark:bg-[#262626] px-4 py-3 outline-none focus:ring-2 focus:ring-panda-laranja"
+              className="min-h-12 rounded-xl bg-panda-cinza px-4 py-3 outline-none focus:ring-2 focus:ring-panda-laranja dark:bg-panda-superficie-dark"
               required
             />
             <button

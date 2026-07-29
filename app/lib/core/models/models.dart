@@ -130,8 +130,21 @@ class Promotion {
   final String? imagem;
   final bool ativa;
   final bool apenasAssinantes;
+  /// Início da janela. Nulo = já vale.
   final DateTime? validadeInicio;
+
+  /// Fim da janela. Nulo = não expira.
   final DateTime? validadeFim;
+
+  /// Está no ar neste instante? Recebe o "agora" de fora pra a Home poder
+  /// reavaliar num relógio (ver `agoraProvider`) — usar `DateTime.now()` aqui
+  /// dentro só reavaliaria quando o Firestore emitisse.
+  bool vigenteEm(DateTime agora) {
+    if (!ativa) return false;
+    if (validadeInicio != null && agora.isBefore(validadeInicio!)) return false;
+    if (validadeFim != null && agora.isAfter(validadeFim!)) return false;
+    return true;
+  }
 
   factory Promotion.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
     final m = d.data() ?? {};
@@ -175,8 +188,10 @@ class Reward {
   final DateTime? resgatavelAte;
 
   /// Janela de resgate ainda aberta?
-  bool get noPrazo =>
-      resgatavelAte == null || !DateTime.now().isAfter(resgatavelAte!);
+  bool noPrazoEm(DateTime agora) =>
+      resgatavelAte == null || !agora.isAfter(resgatavelAte!);
+
+  bool get noPrazo => noPrazoEm(DateTime.now());
 
   bool get disponivel => estoque > 0 && noPrazo;
 
