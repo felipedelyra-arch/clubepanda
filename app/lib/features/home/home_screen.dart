@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
-import '../../core/demo.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/dimens.dart';
@@ -40,6 +39,8 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final promos = ref.watch(promocoesVigentesProvider);
+    final temDestaques =
+        (ref.watch(destaquesProvider).value ?? const []).isNotEmpty;
     final isSub = ref.watch(isSubscriberProvider);
     final primeiroNome = user.value?.nome.split(' ').first ?? 'panda';
 
@@ -96,17 +97,20 @@ class HomeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.only(top: 16),
                 child: _AtalhosRow(),
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    SectionLabel('Destaques do cardápio'),
-                    SizedBox(height: 16),
-                    _DestaquesRow(),
-                  ],
+              // Sem prato marcado como destaque no painel, a seção inteira sai
+              // da Home — rótulo sozinho sobre espaço vazio parece defeito.
+              if (temDestaques)
+                Padding(
+                  padding: const EdgeInsets.only(top: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      SectionLabel('Destaques do cardápio'),
+                      SizedBox(height: 16),
+                      _DestaquesRow(),
+                    ],
+                  ),
                 ),
-              ),
               Padding(
                 padding: const EdgeInsets.only(top: 32),
                 child: Column(
@@ -553,19 +557,23 @@ class _Atalho extends StatelessWidget {
 }
 
 /// Vitrine horizontal de pratos (fotos reais) — só no modo demo.
-class _DestaquesRow extends StatelessWidget {
+class _DestaquesRow extends ConsumerWidget {
   const _DestaquesRow();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final destaques = ref.watch(destaquesProvider).value ?? const <MenuItem>[];
+    // Sem destaque marcado no painel, a faixa some — a seção inteira já é
+    // escondida pela Home, então aqui é só a rede de segurança.
+    if (destaques.isEmpty) return const SizedBox.shrink();
     return SizedBox(
       height: 200,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
-        itemCount: demoDestaques.length,
+        itemCount: destaques.length,
         separatorBuilder: (_, _) => const SizedBox(width: 14),
-        itemBuilder: (_, i) => _DestaqueCard(prato: demoDestaques[i]),
+        itemBuilder: (_, i) => _DestaqueCard(prato: destaques[i]),
       ),
     );
   }
@@ -573,7 +581,7 @@ class _DestaquesRow extends StatelessWidget {
 
 class _DestaqueCard extends StatelessWidget {
   const _DestaqueCard({required this.prato});
-  final DishHighlight prato;
+  final MenuItem prato;
 
   @override
   Widget build(BuildContext context) {
@@ -588,8 +596,14 @@ class _DestaqueCard extends StatelessWidget {
             child: SizedBox(
               height: 132,
               width: double.infinity,
-              child: _imagemPromo(prato.imagem,
-                  erro: Container(color: PandaColors.laranjaSuave)),
+              child: prato.imagem == null
+                  ? Container(
+                      color: PandaColors.laranjaSuave,
+                      child: const Icon(Icons.restaurant_rounded,
+                          color: PandaColors.laranja),
+                    )
+                  : _imagemPromo(prato.imagem!,
+                      erro: Container(color: PandaColors.laranjaSuave)),
             ),
           ),
           const SizedBox(height: 10),
@@ -599,7 +613,7 @@ class _DestaqueCard extends StatelessWidget {
               style: const TextStyle(
                   fontWeight: FontWeight.w600, fontSize: 14.5)),
           const SizedBox(height: 2),
-          Text(prato.preco,
+          Text(prato.precoFormatado,
               style: TextStyle(
                   color: isDark
                       ? PandaColors.laranja

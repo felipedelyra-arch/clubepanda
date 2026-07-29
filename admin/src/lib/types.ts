@@ -36,6 +36,26 @@ export interface Promotion {
   validadeFim?: Date | null;
 }
 
+/**
+ * Prato do cardápio (coleção `menu`). Categoria é campo, não subcoleção — o
+ * app monta as seções em memória a partir dela.
+ */
+export interface MenuItem {
+  id: string;
+  nome: string;
+  descricao: string;
+  /** Em reais, como número. Quem formata é a tela. */
+  preco: number;
+  categoria: string;
+  imagem?: string | null;
+  /** Aparece na vitrine "Destaques do cardápio" da Home do app. */
+  destaque: boolean;
+  /** Fora do ar sem apagar — pro dia em que acaba o peixe. */
+  disponivel: boolean;
+  /** Menor primeiro, dentro da categoria. */
+  ordem: number;
+}
+
 export type RewardTipo = "rodizio" | "prato" | "sobremesa" | "cupom";
 
 export interface Reward {

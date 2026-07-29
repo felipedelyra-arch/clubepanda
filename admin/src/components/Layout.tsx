@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   MoreHorizontal,
+  UtensilsCrossed,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -30,6 +31,7 @@ interface ItemNav {
 const nav: ItemNav[] = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
   { to: "/promocoes", label: "Promoções", icon: Megaphone },
+  { to: "/cardapio", label: "Cardápio", icon: UtensilsCrossed },
   { to: "/premiacoes", label: "Premiações", icon: Gift },
   { to: "/membros", label: "Membros", icon: Users },
   { to: "/planos", label: "Plano", icon: CreditCard },
@@ -40,11 +42,12 @@ const nav: ItemNav[] = [
 
 /**
  * Barra de baixo do celular: o que o dono abre em pé no salão, no meio do
- * serviço. Ordenado por frequência de uso, não por hierarquia de menu — daí
- * Premiações (validar resgate no caixa) vir antes de Pagamentos.
+ * serviço. Escolhido por frequência de uso, não pela ordem do menu lateral —
+ * validar resgate acontece todo dia, mexer no cardápio uma vez por mês.
  */
-const navCelular = nav.slice(0, 4);
-const navGaveta = nav.slice(4);
+const rotasCelular = ["/", "/promocoes", "/premiacoes", "/membros"];
+const navCelular = rotasCelular.map((r) => nav.find((n) => n.to === r)!);
+const navGaveta = nav.filter((n) => !rotasCelular.includes(n.to));
 
 function estiloItem(isActive: boolean) {
   return `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${

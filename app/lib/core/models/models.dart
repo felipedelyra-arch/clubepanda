@@ -161,6 +161,68 @@ class Promotion {
   }
 }
 
+/// Prato do cardápio. Coleção `menu`, um doc por prato — a categoria é campo,
+/// não subcoleção, pra tela inteira caber num `snapshots()` só.
+class MenuItem {
+  MenuItem({
+    required this.id,
+    required this.nome,
+    this.descricao = '',
+    this.preco = 0,
+    this.categoria = 'Outros',
+    this.imagem,
+    this.destaque = false,
+    this.disponivel = true,
+    this.ordem = 0,
+  });
+
+  final String id;
+  final String nome;
+  final String descricao;
+
+  /// Em reais. Guardado como número — quem formata é a tela.
+  final double preco;
+  final String categoria;
+  final String? imagem;
+
+  /// Aparece na vitrine "Destaques do cardápio" da Home.
+  final bool destaque;
+
+  /// Fora do ar sem apagar — pro dia em que acaba o peixe.
+  final bool disponivel;
+
+  /// Menor primeiro. Ordena o prato dentro da categoria, e a categoria pelo
+  /// menor valor entre os pratos dela.
+  final int ordem;
+
+  String get precoFormatado =>
+      'R\$ ${preco.toStringAsFixed(2).replaceAll('.', ',')}';
+
+  factory MenuItem.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data() ?? {};
+    return MenuItem(
+      id: d.id,
+      nome: m['nome'] ?? '',
+      descricao: m['descricao'] ?? '',
+      preco: (m['preco'] as num?)?.toDouble() ?? 0,
+      categoria: (m['categoria'] as String?)?.trim().isNotEmpty == true
+          ? m['categoria'] as String
+          : 'Outros',
+      imagem: m['imagem'],
+      destaque: m['destaque'] ?? false,
+      disponivel: m['disponivel'] ?? true,
+      ordem: (m['ordem'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+/// Categoria montada em memória a partir dos pratos.
+class MenuCategoria {
+  const MenuCategoria({required this.nome, required this.itens});
+  final String nome;
+  final List<MenuItem> itens;
+}
+
 class Reward {
   Reward({
     required this.id,

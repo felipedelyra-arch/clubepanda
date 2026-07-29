@@ -25,6 +25,12 @@ service firebase.storage {
       allow write: if isAdmin() && isImage();
     }
 
+    // Fotos dos pratos do cardápio.
+    match /menu/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && isImage();
+    }
+
     // Foto de perfil: dono lê/escreve a própria; leitura pública opcional.
     match /users/{userId}/{fileName} {
       allow read: if true;

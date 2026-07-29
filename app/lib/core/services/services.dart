@@ -75,6 +75,54 @@ final rewardsProvider = StreamProvider<List<Reward>>((ref) {
       .map((s) => s.docs.map(Reward.fromDoc).toList());
 });
 
+/// Cardápio: só o que está disponível. Sem `orderBy` na query pra não exigir
+/// índice composto — a ordenação acontece em memória, que aqui é barato.
+final menuProvider = StreamProvider<List<MenuItem>>((ref) {
+  return ref
+      .watch(firestoreProvider)
+      .collection('menu')
+      .where('disponivel', isEqualTo: true)
+      .snapshots()
+      .map((s) => s.docs.map(MenuItem.fromDoc).toList());
+});
+
+/// Cardápio agrupado por categoria. Prato ordena por `ordem` e desempata pelo
+/// nome; a categoria entra na posição do menor `ordem` que ela tem dentro.
+final cardapioProvider = Provider<AsyncValue<List<MenuCategoria>>>((ref) {
+  return ref.watch(menuProvider).whenData((itens) {
+    final porCategoria = <String, List<MenuItem>>{};
+    for (final i in itens) {
+      porCategoria.putIfAbsent(i.categoria, () => []).add(i);
+    }
+    for (final lista in porCategoria.values) {
+      lista.sort((a, b) {
+        final c = a.ordem.compareTo(b.ordem);
+        return c != 0 ? c : a.nome.compareTo(b.nome);
+      });
+    }
+    final categorias = porCategoria.entries
+        .map((e) => MenuCategoria(nome: e.key, itens: e.value))
+        .toList();
+    categorias.sort((a, b) {
+      final c = a.itens.first.ordem.compareTo(b.itens.first.ordem);
+      return c != 0 ? c : a.nome.compareTo(b.nome);
+    });
+    return categorias;
+  });
+});
+
+/// Vitrine da Home: os pratos marcados como destaque, na mesma ordem.
+final destaquesProvider = Provider<AsyncValue<List<MenuItem>>>((ref) {
+  return ref.watch(menuProvider).whenData((itens) {
+    final destaques = itens.where((i) => i.destaque).toList();
+    destaques.sort((a, b) {
+      final c = a.ordem.compareTo(b.ordem);
+      return c != 0 ? c : a.nome.compareTo(b.nome);
+    });
+    return destaques;
+  });
+});
+
 /// Planos (vitrine).
 final plansProvider = StreamProvider<List<Plan>>((ref) {
   return ref

@@ -5,6 +5,7 @@ import { Layout } from "./components/Layout";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
 import { Promotions } from "./pages/Promotions";
+import { Menu } from "./pages/Menu";
 import { Rewards } from "./pages/Rewards";
 import { Plans } from "./pages/Plans";
 import { Members } from "./pages/Members";
@@ -34,6 +35,7 @@ export default function App() {
         >
           <Route path="/" element={<Dashboard />} />
           <Route path="/promocoes" element={<Promotions />} />
+          <Route path="/cardapio" element={<Menu />} />
           <Route path="/premiacoes" element={<Rewards />} />
           <Route path="/planos" element={<Plans />} />
           <Route path="/membros" element={<Members />} />

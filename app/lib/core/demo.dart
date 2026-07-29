@@ -132,116 +132,87 @@ final _demoPromotions = [
   ),
 ];
 
-/// Destaques do cardápio (fotos reais) — vitrine na Home.
-final demoDestaques = <DishHighlight>[
-  DishHighlight(
+/// Cardápio do demo. Mesma forma do que vem do Firestore — o que muda é só a
+/// origem da imagem (asset local em vez de URL do Storage).
+final _demoMenu = <MenuItem>[
+  MenuItem(
+      id: 'm1',
       nome: 'Combinado especial',
-      preco: 'R\$ 89,90',
-      imagem: 'assets/images/combinado_box.jpg'),
-  DishHighlight(
-      nome: 'Salmão grelhado',
-      preco: 'R\$ 54,90',
-      imagem: 'assets/images/salmao.jpg'),
-  DishHighlight(
+      descricao: '20 peças variadas: sashimi, uramaki e niguiri.',
+      preco: 89.90,
+      categoria: 'Combinados & Sushi',
+      imagem: 'assets/images/combinado_box.jpg',
+      destaque: true,
+      ordem: 1),
+  MenuItem(
+      id: 'm2',
+      nome: 'Combinado do chef',
+      descricao: 'Seleção do dia feita pelo sushiman.',
+      preco: 99.90,
+      categoria: 'Combinados & Sushi',
+      imagem: 'assets/images/combinado_chef.jpg',
+      ordem: 2),
+  MenuItem(
+      id: 'm3',
       nome: 'Sashimi premium',
-      preco: 'R\$ 62,00',
-      imagem: 'assets/images/sashimi.jpg'),
-  DishHighlight(
+      descricao: 'Fatias generosas de salmão fresco.',
+      preco: 62.00,
+      categoria: 'Combinados & Sushi',
+      imagem: 'assets/images/sashimi.jpg',
+      destaque: true,
+      ordem: 3),
+  MenuItem(
+      id: 'm4',
+      nome: 'Niguiri de maracujá',
+      descricao: 'Salmão maçaricado com toque de maracujá.',
+      preco: 34.90,
+      categoria: 'Combinados & Sushi',
+      imagem: 'assets/images/nigiri_maracuja.jpg',
+      ordem: 4),
+  MenuItem(
+      id: 'm5',
+      nome: 'Salmão grelhado',
+      descricao: 'Ao molho da casa, acompanha arroz.',
+      preco: 54.90,
+      categoria: 'Salmão',
+      imagem: 'assets/images/salmao.jpg',
+      destaque: true,
+      ordem: 10),
+  MenuItem(
+      id: 'm6',
+      nome: 'Salmão no purê',
+      descricao: 'Filé grelhado sobre purê rústico e cogumelos.',
+      preco: 58.90,
+      categoria: 'Salmão',
+      imagem: 'assets/images/salmao_pure.jpg',
+      ordem: 11),
+  MenuItem(
+      id: 'm7',
       nome: 'Strogonoff da casa',
-      preco: 'R\$ 44,90',
-      imagem: 'assets/images/strogonoff.jpg'),
-  DishHighlight(
-      nome: 'Burguer Panda',
-      preco: 'R\$ 39,90',
-      imagem: 'assets/images/burger.jpg'),
-  DishHighlight(
+      descricao: 'Carne, arroz e batata palha.',
+      preco: 44.90,
+      categoria: 'Pratos quentes',
+      imagem: 'assets/images/strogonoff.jpg',
+      destaque: true,
+      ordem: 20),
+  MenuItem(
+      id: 'm8',
       nome: 'Filé gratinado',
-      preco: 'R\$ 58,00',
-      imagem: 'assets/images/file_gratinado.jpg'),
-];
-
-/// Prato de exemplo pra vitrine do cardápio.
-class DishHighlight {
-  const DishHighlight(
-      {required this.nome, required this.preco, required this.imagem});
-  final String nome;
-  final String preco;
-  final String imagem;
-}
-
-/// ---------- Cardápio (exemplo, com fotos) ----------
-class MenuItem {
-  const MenuItem(
-      {required this.nome,
-      required this.descricao,
-      required this.preco,
-      required this.imagem});
-  final String nome;
-  final String descricao;
-  final String preco;
-  final String imagem;
-}
-
-class MenuCategoria {
-  const MenuCategoria({required this.nome, required this.itens});
-  final String nome;
-  final List<MenuItem> itens;
-}
-
-final demoCardapio = <MenuCategoria>[
-  MenuCategoria(nome: 'Combinados & Sushi', itens: const [
-    MenuItem(
-        nome: 'Combinado especial',
-        descricao: '20 peças variadas: sashimi, uramaki e niguiri.',
-        preco: 'R\$ 89,90',
-        imagem: 'assets/images/combinado_box.jpg'),
-    MenuItem(
-        nome: 'Combinado do chef',
-        descricao: 'Seleção do dia feita pelo sushiman.',
-        preco: 'R\$ 99,90',
-        imagem: 'assets/images/combinado_chef.jpg'),
-    MenuItem(
-        nome: 'Sashimi premium',
-        descricao: 'Fatias generosas de salmão fresco.',
-        preco: 'R\$ 62,00',
-        imagem: 'assets/images/sashimi.jpg'),
-    MenuItem(
-        nome: 'Niguiri de maracujá',
-        descricao: 'Salmão maçaricado com toque de maracujá.',
-        preco: 'R\$ 34,90',
-        imagem: 'assets/images/nigiri_maracuja.jpg'),
-  ]),
-  MenuCategoria(nome: 'Salmão', itens: const [
-    MenuItem(
-        nome: 'Salmão grelhado',
-        descricao: 'Ao molho da casa, acompanha arroz.',
-        preco: 'R\$ 54,90',
-        imagem: 'assets/images/salmao.jpg'),
-    MenuItem(
-        nome: 'Salmão no purê',
-        descricao: 'Filé grelhado sobre purê rústico e cogumelos.',
-        preco: 'R\$ 58,90',
-        imagem: 'assets/images/salmao_pure.jpg'),
-  ]),
-  MenuCategoria(nome: 'Pratos quentes', itens: const [
-    MenuItem(
-        nome: 'Strogonoff da casa',
-        descricao: 'Carne, arroz e batata palha.',
-        preco: 'R\$ 44,90',
-        imagem: 'assets/images/strogonoff.jpg'),
-    MenuItem(
-        nome: 'Filé gratinado',
-        descricao: 'Filé com queijo gratinado, fritas e refil.',
-        preco: 'R\$ 58,00',
-        imagem: 'assets/images/file_gratinado.jpg'),
-  ]),
-  MenuCategoria(nome: 'Lanches', itens: const [
-    MenuItem(
-        nome: 'Burguer Panda',
-        descricao: 'Pão crocante, queijo derretido e fritas.',
-        preco: 'R\$ 39,90',
-        imagem: 'assets/images/burger.jpg'),
-  ]),
+      descricao: 'Filé com queijo gratinado, fritas e refil.',
+      preco: 58.00,
+      categoria: 'Pratos quentes',
+      imagem: 'assets/images/file_gratinado.jpg',
+      destaque: true,
+      ordem: 21),
+  MenuItem(
+      id: 'm9',
+      nome: 'Burguer Panda',
+      descricao: 'Pão crocante, queijo derretido e fritas.',
+      preco: 39.90,
+      categoria: 'Lanches',
+      imagem: 'assets/images/burger.jpg',
+      destaque: true,
+      ordem: 30),
 ];
 
 final _demoRewards = [
@@ -388,6 +359,7 @@ final demoOverrides = [
   notificationsProvider
       .overrideWith((ref) => Stream.value(ref.watch(demoNotificationsProvider))),
   rewardsProvider.overrideWith((_) => Stream.value(_demoRewards)),
+  menuProvider.overrideWith((_) => Stream.value(_demoMenu)),
   plansProvider.overrideWith((_) => Stream.value(_demoPlans)),
   redemptionsProvider
       .overrideWith((ref) => Stream.value(ref.watch(demoRedemptionsProvider))),

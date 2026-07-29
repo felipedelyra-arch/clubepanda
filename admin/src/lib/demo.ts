@@ -12,6 +12,7 @@ import type {
   Subscription,
   Payment,
   Restaurante,
+  MenuItem,
 } from "./types";
 
 export const IS_DEMO = import.meta.env.VITE_DEMO === "true";
@@ -117,6 +118,22 @@ const demoRestaurante: Restaurante = {
   appStoreUrl: "https://apps.apple.com/app/id000000000",
 };
 
+// Cardápio do demo — mesmos pratos de `app/lib/core/demo.dart`. Sem imagem
+// aqui: o painel cai no ícone de talher, que é o caso real de prato sem foto.
+const demoMenu: MenuItem[] = [
+  { id: "m1", nome: "Combinado especial", descricao: "20 peças variadas: sashimi, uramaki e niguiri.", preco: 89.9, categoria: "Combinados & Sushi", imagem: null, destaque: true, disponivel: true, ordem: 1 },
+  { id: "m2", nome: "Combinado do chef", descricao: "Seleção do dia feita pelo sushiman.", preco: 99.9, categoria: "Combinados & Sushi", imagem: null, destaque: false, disponivel: true, ordem: 2 },
+  { id: "m3", nome: "Sashimi premium", descricao: "Fatias generosas de salmão fresco.", preco: 62, categoria: "Combinados & Sushi", imagem: null, destaque: true, disponivel: true, ordem: 3 },
+  { id: "m4", nome: "Niguiri de maracujá", descricao: "Salmão maçaricado com toque de maracujá.", preco: 34.9, categoria: "Combinados & Sushi", imagem: null, destaque: false, disponivel: true, ordem: 4 },
+  { id: "m5", nome: "Salmão grelhado", descricao: "Ao molho da casa, acompanha arroz.", preco: 54.9, categoria: "Salmão", imagem: null, destaque: true, disponivel: true, ordem: 10 },
+  { id: "m6", nome: "Salmão no purê", descricao: "Filé grelhado sobre purê rústico e cogumelos.", preco: 58.9, categoria: "Salmão", imagem: null, destaque: false, disponivel: true, ordem: 11 },
+  { id: "m7", nome: "Strogonoff da casa", descricao: "Carne, arroz e batata palha.", preco: 44.9, categoria: "Pratos quentes", imagem: null, destaque: true, disponivel: true, ordem: 20 },
+  { id: "m8", nome: "Filé gratinado", descricao: "Filé com queijo gratinado, fritas e refil.", preco: 58, categoria: "Pratos quentes", imagem: null, destaque: true, disponivel: true, ordem: 21 },
+  { id: "m9", nome: "Burguer Panda", descricao: "Pão crocante, queijo derretido e fritas.", preco: 39.9, categoria: "Lanches", imagem: null, destaque: true, disponivel: true, ordem: 30 },
+  // Fora do ar: acabou o ingrediente. Continua cadastrado, some do app.
+  { id: "m10", nome: "Ceviche de salmão", descricao: "Cubos de salmão, limão siciliano e cebola roxa.", preco: 48.9, categoria: "Pratos quentes", imagem: null, destaque: false, disponivel: false, ordem: 22 },
+];
+
 // Mapa caminho do documento -> dado mock.
 export const demoDocs: Record<string, unknown> = {
   "config/restaurante": demoRestaurante,
@@ -131,6 +148,7 @@ export const demoData: Record<string, unknown[]> = {
   rewards: demoRewards,
   redemptions: demoRedemptions,
   plans: demoPlans,
+  menu: demoMenu,
 };
 
 // Usuário admin fake pro AuthContext no modo demo.

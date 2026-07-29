@@ -81,6 +81,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- menu ----
+    // Cardápio: um doc por prato, categoria é campo. Leitura pública (o app
+    // mostra sem login), escrita só admin.
+    match /menu/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ---- redemptions ----
     // Dono lê os próprios resgates. Admin lê todos. Escrita só backend
     // (resgate baixa estoque dentro da janela; validação marca como usado).
