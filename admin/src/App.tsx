@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
-import { Spinner } from "./components/ui";
+import { Splash } from "./components/Splash";
+import { primeiroNome } from "./lib/format";
 import { Layout } from "./components/Layout";
 import { Login } from "./pages/Login";
 import { Dashboard } from "./pages/Dashboard";
@@ -13,11 +15,28 @@ import { Payments } from "./pages/Payments";
 import { Notifications } from "./pages/Notifications";
 import { Settings } from "./pages/Settings";
 
+/** Quanto tempo a saudação fica na tela depois que o login resolve. */
+const TEMPO_SAUDACAO = 1500;
+
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, isAdmin, loading } = useAuth();
-  if (loading) return <Spinner />;
-  // Só admin autenticado passa. Resto vai pro login (que mostra "Acesso negado").
-  if (!user || !isAdmin) return <Navigate to="/login" replace />;
+  const [saudando, setSaudando] = useState(true);
+
+  // A saudação segura a tela por um instante depois que o login resolve. Sem
+  // isso ela pisca por 200ms e ninguém consegue ler — pior que não ter.
+  useEffect(() => {
+    if (loading) return;
+    const t = setTimeout(() => setSaudando(false), TEMPO_SAUDACAO);
+    return () => clearTimeout(t);
+  }, [loading]);
+
+  // Só admin autenticado passa. Resto vai pro login (que mostra "Acesso
+  // negado") — e vai direto, sem saudação: não é a pessoa certa.
+  if (!loading && (!user || !isAdmin)) return <Navigate to="/login" replace />;
+
+  if (loading || saudando)
+    return <Splash nome={loading ? null : primeiroNome(user?.displayName)} />;
+
   return <>{children}</>;
 }
 

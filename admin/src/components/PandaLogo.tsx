@@ -1,24 +1,19 @@
-import logoUrl from '../assets/logo.png';
+import logoUrl from "../assets/logo.png";
 
 /**
- * Logo oficial do Tio Panda / Clube Panda.
- * A imagem já contém a arte circular + texto "TioPanda".
- * Usa apenas `height` para definir o tamanho — a largura se ajusta
- * automaticamente via `object-fit: contain`, sem distorcer.
+ * Logo oficial do Tio Panda / Clube Panda. A arte é quadrada (512×512) e já
+ * traz o círculo + o texto "TioPanda" dentro, então o tamanho é um lado só.
  */
-export function PandaLogo({ size = 40 }: { size?: number; showWordmark?: boolean }) {
+export function PandaLogo({ size = 44 }: { size?: number }) {
   return (
-    <div style={{ width: size, height: size, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <img 
-        src={logoUrl} 
-        alt="Logo Clube Panda" 
-        style={{ 
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain',
-          display: 'block',
-        }} 
-      />
-    </div>
+    <img
+      src={logoUrl}
+      alt="Clube Panda"
+      width={size}
+      height={size}
+      className="shrink-0 select-none object-contain"
+      style={{ width: size, height: size }}
+      draggable={false}
+    />
   );
 }

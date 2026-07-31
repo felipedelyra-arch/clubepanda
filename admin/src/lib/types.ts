@@ -106,12 +106,54 @@ export interface Restaurante {
   appStoreUrl: string;
 }
 
+/**
+ * Registro de um disparo de aviso (coleção `notificationLogs`, escrita só pelas
+ * Cloud Functions). Sem isso a tela de Notificações é um formulário cego: manda
+ * e nunca mostra o que já foi mandado.
+ */
+export interface PushLog {
+  id: string;
+  titulo: string;
+  corpo: string;
+  publico: "todos" | "assinantes";
+  /** Aparelhos que aceitaram a entrega. */
+  enviados: number;
+  /** Quem disparou: o dono no painel, ou o gatilho de promoção/prêmio novo. */
+  origem: "manual" | "promocao" | "premio";
+  criadoEm?: Date | null;
+}
+
+/** Uma linha da comanda. Só existe em cobrança de consumo no salão. */
+export interface ItemConsumo {
+  nome: string;
+  quantidade: number;
+  /** Preço unitário em reais. */
+  preco: number;
+}
+
 export interface Payment {
   id: string;
   userId: string;
   valor: number;
-  metodo: "cartao" | "pix";
+  metodo: "cartao" | "pix" | "dinheiro";
   status: string;
   gatewayRef?: string | null;
   data?: Date | null;
+
+  /**
+   * De onde veio o dinheiro. `assinatura` é a mensalidade do clube, cobrada
+   * pelo gateway — é o que existe hoje. `consumo` é conta fechada no salão e
+   * **só aparece se o sistema de comanda do restaurante gravar aqui**; sem essa
+   * integração os campos abaixo nunca vêm preenchidos. Cobrança antiga, sem o
+   * campo, é tratada como assinatura.
+   */
+  tipo?: "assinatura" | "consumo";
+  /** Mesa ou comanda, quando a cobrança nasceu no salão. */
+  mesa?: string | null;
+  /** Quem atendeu. */
+  atendente?: string | null;
+  /** O que foi consumido — é a resposta pra "onde foi gasto". */
+  itens?: ItemConsumo[] | null;
+  /** Quanto o cliente economizou por ser do clube, em reais. */
+  descontoClube?: number | null;
 }

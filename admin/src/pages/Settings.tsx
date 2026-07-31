@@ -1,13 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { doc, setDoc } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { UserPlus, UserMinus, AlertTriangle } from "lucide-react";
+import {
+  UserPlus,
+  UserMinus,
+  AlertTriangle,
+  Check,
+  Phone,
+  MessageCircle,
+  MapPin,
+  FileText,
+} from "lucide-react";
 import { toast } from "sonner";
 import { db, functions } from "../lib/firebase";
 import { useCollection, useDoc } from "../lib/useCollection";
 import type { AppUser, Restaurante } from "../lib/types";
-import { Card, Button, Badge, Spinner, PageHeader } from "../components/ui";
-import { Field, inputBase } from "../components/Modal";
+import {
+  Card,
+  Button,
+  Badge,
+  Avatar,
+  Spinner,
+  PageHeader,
+  SectionTitle,
+} from "../components/ui";
+import { Field, inputBase, ConfirmDialog } from "../components/Modal";
 import { demoBlock } from "../lib/demo";
 
 const vazio: Restaurante = {
@@ -21,18 +38,94 @@ const vazio: Restaurante = {
   appStoreUrl: "",
 };
 
-/** Mesmos valores de exemplo de `app/lib/core/restaurante.dart`. */
-const placeholders = [
-  "551430000000",
-  "5514990000000",
-  "Tio Panda restaurante",
-  "https://tiopanda.com.br/privacidade",
-  "https://tiopanda.com.br/termos",
-  "https://play.google.com/store/apps/details?id=com.tiopanda.clube",
-  "https://apps.apple.com/app/id000000000",
+type Chave = keyof Restaurante;
+
+interface CampoCfg {
+  chave: Chave;
+  label: string;
+  hint: string;
+  placeholder: string;
+  /** Valor de exemplo herdado de `app/lib/core/restaurante.dart`. Enquanto o
+   *  campo estiver assim, o botão do app abre um número/endereço fictício. */
+  exemplo?: string;
+  numerico?: boolean;
+}
+
+const contato: CampoCfg[] = [
+  {
+    chave: "nome",
+    label: "Nome do restaurante",
+    hint: "Aparece no topo do app e nos avisos.",
+    placeholder: "Tio Panda",
+  },
+  {
+    chave: "telefone",
+    label: "Telefone",
+    hint: "Botão Ligar. DDI + DDD + número, só dígitos.",
+    placeholder: "551430000000",
+    exemplo: "551430000000",
+    numerico: true,
+  },
+  {
+    chave: "whatsapp",
+    label: "WhatsApp",
+    hint: "Botão Falar no WhatsApp. DDI + DDD + número, só dígitos.",
+    placeholder: "5514990000000",
+    exemplo: "5514990000000",
+    numerico: true,
+  },
+  {
+    chave: "endereco",
+    label: "Endereço",
+    hint: "Botão Como chegar — é o texto que vai pra busca do Google Maps.",
+    placeholder: "Rua X, 123 — Bauru/SP",
+    exemplo: "Tio Panda restaurante",
+  },
 ];
 
+const documentos: CampoCfg[] = [
+  {
+    chave: "politicaPrivacidadeUrl",
+    label: "Política de privacidade",
+    hint: "Exigida pela Play Store e pela App Store.",
+    placeholder: "https://…",
+    exemplo: "https://tiopanda.com.br/privacidade",
+  },
+  {
+    chave: "termosUrl",
+    label: "Termos de uso",
+    hint: "Link aberto pelo rodapé das configurações do app.",
+    placeholder: "https://…",
+    exemplo: "https://tiopanda.com.br/termos",
+  },
+  {
+    chave: "playStoreUrl",
+    label: "Link na Play Store",
+    hint: 'Usado no "Indique um amigo" para quem tem Android.',
+    placeholder: "https://play.google.com/…",
+    exemplo: "https://play.google.com/store/apps/details?id=com.tiopanda.clube",
+  },
+  {
+    chave: "appStoreUrl",
+    label: "Link na App Store",
+    hint: 'Usado no "Indique um amigo" para quem tem iPhone.',
+    placeholder: "https://apps.apple.com/…",
+    exemplo: "https://apps.apple.com/app/id000000000",
+  },
+];
+
+const todosCampos = [...contato, ...documentos];
+
 const soDigitos = (s: string) => s.replace(/\D/g, "");
+
+/** +55 (14) 99911-0001 — pra conferir de bate-pronto se o número está certo. */
+function telefoneBonito(v: string): string | null {
+  const s = soDigitos(v);
+  if (s.length < 12) return null;
+  const [ddi, ddd, resto] = [s.slice(0, 2), s.slice(2, 4), s.slice(4)];
+  const corte = resto.length > 8 ? 5 : 4;
+  return `+${ddi} (${ddd}) ${resto.slice(0, corte)}-${resto.slice(corte)}`;
+}
 
 export function Settings() {
   const { data: users } = useCollection<AppUser>("users");
@@ -40,6 +133,7 @@ export function Settings() {
   const [form, setForm] = useState<Restaurante>(vazio);
   const [salvando, setSalvando] = useState(false);
   const [uidAlvo, setUidAlvo] = useState("");
+  const [revogar, setRevogar] = useState<AppUser | null>(null);
 
   // Preenche o formulário quando o doc chega (e a cada mudança no Firestore).
   useEffect(() => {
@@ -47,11 +141,24 @@ export function Settings() {
   }, [salvo]);
 
   const admins = users.filter((u) => u.role === "admin");
-  const pendentes = Object.values(form).filter((v) =>
-    placeholders.includes(String(v))
-  ).length;
 
-  const set = (campo: keyof Restaurante) => (e: { target: { value: string } }) =>
+  const pendentes = useMemo(
+    () =>
+      todosCampos.filter((c) => {
+        const v = String(form[c.chave] ?? "").trim();
+        return !v || (c.exemplo && v === c.exemplo);
+      }),
+    [form]
+  );
+
+  const alterados = useMemo(() => {
+    const base = { ...vazio, ...(salvo ?? {}) };
+    return todosCampos.filter(
+      (c) => String(form[c.chave] ?? "") !== String(base[c.chave] ?? "")
+    );
+  }, [form, salvo]);
+
+  const set = (campo: Chave) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [campo]: e.target.value }));
 
   async function salvarRestaurante() {
@@ -69,7 +176,7 @@ export function Settings() {
         { ...form, telefone: soDigitos(form.telefone), whatsapp: soDigitos(form.whatsapp) },
         { merge: true }
       );
-      toast.success("Dados salvos.");
+      toast.success("Dados salvos. O app pega a mudança na hora.");
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -81,7 +188,7 @@ export function Settings() {
     if (demoBlock(makeAdmin ? "Admin não concedido" : "Admin não revogado")) return setUidAlvo("");
     try {
       await httpsCallable(functions, "setAdminRole")({ targetUid, makeAdmin });
-      toast.success(makeAdmin ? "Admin concedido." : "Admin revogado.");
+      toast.success(makeAdmin ? "Acesso concedido." : "Acesso revogado.");
       setUidAlvo("");
     } catch (e) {
       toast.error((e as Error).message);
@@ -91,84 +198,225 @@ export function Settings() {
   if (loading) return <Spinner />;
 
   return (
-    <div className="max-w-2xl">
-      <PageHeader titulo="Configurações" />
+    // pb extra: a barra de "não salvo" flutua sobre o fim da página.
+    <div className="max-w-3xl pb-24">
+      <PageHeader
+        titulo="Configurações"
+        eyebrow="Dados do restaurante"
+        descricao="É daqui que o app tira o telefone, o endereço e os links que ele mostra pro cliente."
+      />
 
-      <Card className="mb-6">
-        <h2 className="mb-1 font-semibold">Dados do restaurante</h2>
-        <p className="mb-4 text-sm text-panda-cinza-texto">
-          Usados pelos botões de contato do app (Ligar, WhatsApp, Como chegar) e
-          pelos links de política/termos exigidos pelas lojas.
-        </p>
-
-        {pendentes > 0 && (
-          <div className="mb-4 flex gap-2 rounded-xl bg-panda-laranja/15 p-3 text-sm text-panda-laranja">
-            <AlertTriangle size={18} className="mt-0.5 shrink-0" />
-            <span>
-              {pendentes} campo(s) ainda com valor de exemplo. Enquanto estiver
-              assim, os botões do app abrem número/endereço fictício.
-            </span>
+      {/* Checklist: em vez de "3 campos com valor de exemplo", diz quais. Sem o
+          nome do campo, o aviso não indica o que fazer. */}
+      {pendentes.length > 0 ? (
+        <div className="mb-6 rounded-2xl border border-marca/30 bg-marca/8 p-4">
+          <div className="flex items-center gap-2 font-semibold text-marca-tinta">
+            <AlertTriangle size={17} className="shrink-0" />
+            {pendentes.length === 1
+              ? "1 campo ainda não é o de verdade"
+              : `${pendentes.length} campos ainda não são os de verdade`}
           </div>
-        )}
+          <p className="mt-1 text-sm text-tinta-2">
+            Enquanto estiverem assim, os botões do app levam o cliente a um
+            número, endereço ou link fictício.
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-1.5">
+            {pendentes.map((c) => (
+              <li key={c.chave}>
+                <Badge color="orange">{c.label}</Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <div className="mb-6 flex items-center gap-2 rounded-2xl border border-ok/30 bg-ok/8 p-4 text-sm font-semibold text-ok-tinta">
+          <Check size={17} className="shrink-0" />
+          Tudo preenchido com dados reais.
+        </div>
+      )}
 
-        <Field label="Nome">
-          <input className={inputBase} value={form.nome} onChange={set("nome")} placeholder="Tio Panda" />
-        </Field>
-        <Field label="Telefone (DDI + DDD + número, só dígitos)">
-          <input className={inputBase} value={form.telefone} onChange={set("telefone")} placeholder="551430000000" inputMode="numeric" />
-        </Field>
-        <Field label="WhatsApp (DDI + DDD + número, só dígitos)">
-          <input className={inputBase} value={form.whatsapp} onChange={set("whatsapp")} placeholder="5514990000000" inputMode="numeric" />
-        </Field>
-        <Field label="Endereço (como buscar no Google Maps)">
-          <input className={inputBase} value={form.endereco} onChange={set("endereco")} placeholder="Rua X, 123 — Bauru/SP" />
-        </Field>
-        <Field label="URL da política de privacidade">
-          <input className={inputBase} value={form.politicaPrivacidadeUrl} onChange={set("politicaPrivacidadeUrl")} placeholder="https://…" />
-        </Field>
-        <Field label="URL dos termos de uso">
-          <input className={inputBase} value={form.termosUrl} onChange={set("termosUrl")} placeholder="https://…" />
-        </Field>
-        <Field label="Link na Play Store">
-          <input className={inputBase} value={form.playStoreUrl} onChange={set("playStoreUrl")} placeholder="https://play.google.com/…" />
-        </Field>
-        <Field label="Link na App Store">
-          <input className={inputBase} value={form.appStoreUrl} onChange={set("appStoreUrl")} placeholder="https://apps.apple.com/…" />
-        </Field>
-
-        <Button onClick={salvarRestaurante} disabled={salvando}>
-          {salvando ? "Salvando..." : "Salvar"}
-        </Button>
-      </Card>
-
-      <Card>
-        <h2 className="mb-3 font-semibold">Administradores</h2>
-        <div className="mb-4 space-y-2">
-          {admins.map((a) => (
-            <div key={a.uid} className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-2 dark:bg-panda-card-dark">
-              <div>
-                <div className="font-medium">{a.nome || a.email}</div>
-                <div className="text-xs text-panda-cinza-texto">{a.uid}</div>
+      <section className="mb-6">
+        <SectionTitle>Contato e localização</SectionTitle>
+        <Card>
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            {contato.map((c) => (
+              <div key={c.chave} className={c.chave === "endereco" ? "sm:col-span-2" : ""}>
+                <Field label={c.label} hint={c.hint}>
+                  <input
+                    className={inputBase}
+                    value={String(form[c.chave] ?? "")}
+                    onChange={set(c.chave)}
+                    placeholder={c.placeholder}
+                    inputMode={c.numerico ? "numeric" : undefined}
+                  />
+                  <Confere campo={c} valor={String(form[c.chave] ?? "")} />
+                </Field>
               </div>
-              <div className="flex items-center gap-2">
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="mb-6">
+        <SectionTitle>Documentos e lojas</SectionTitle>
+        <Card>
+          <div className="grid gap-x-4 sm:grid-cols-2">
+            {documentos.map((c) => (
+              <Field key={c.chave} label={c.label} hint={c.hint}>
+                <input
+                  className={inputBase}
+                  value={String(form[c.chave] ?? "")}
+                  onChange={set(c.chave)}
+                  placeholder={c.placeholder}
+                />
+                <Confere campo={c} valor={String(form[c.chave] ?? "")} />
+              </Field>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section>
+        <SectionTitle>Quem entra no painel</SectionTitle>
+        <Card>
+          <p className="mb-4 text-sm text-tinta-2">
+            Só quem está nesta lista consegue abrir o painel. O primeiro admin é
+            criado por script (ver <code className="font-mono text-xs">firebase/README.md</code>);
+            daí em diante é por aqui.
+          </p>
+
+          <ul className="mb-4 divide-y divide-linha rounded-2xl border border-linha">
+            {admins.map((a) => (
+              <li key={a.uid} className="flex items-center gap-3 px-3.5 py-3">
+                <Avatar nome={a.nome || a.email} />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{a.nome || a.email}</div>
+                  <div className="truncate font-mono text-xs text-tinta-3">{a.uid}</div>
+                </div>
                 <Badge color="orange">admin</Badge>
-                <Button variant="ghost" onClick={() => alterarAdmin(a.uid, false)}>
-                  <UserMinus size={16} className="text-panda-vermelho" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={`Revogar acesso de ${a.nome || a.email}`}
+                  onClick={() => setRevogar(a)}
+                >
+                  <UserMinus size={16} />
                 </Button>
-              </div>
+              </li>
+            ))}
+            {admins.length === 0 && (
+              <li className="px-3.5 py-4 text-sm text-tinta-3">
+                Nenhum administrador no cadastro.
+              </li>
+            )}
+          </ul>
+
+          <Field
+            label="Dar acesso a mais alguém"
+            hint="Cole o identificador (UID) da conta. Ele aparece na ficha do membro."
+          >
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                className={inputBase}
+                placeholder="Ex.: 8fK2p…"
+                value={uidAlvo}
+                onChange={(e) => setUidAlvo(e.target.value)}
+              />
+              <Button onClick={() => alterarAdmin(uidAlvo.trim(), true)} disabled={!uidAlvo.trim()}>
+                <UserPlus size={17} /> Conceder
+              </Button>
             </div>
-          ))}
+          </Field>
+        </Card>
+      </section>
+
+      {/* Barra de não salvo: aparece só quando há o que salvar, e conta quantos
+          campos mudaram. Sem ela, o botão de salvar ficava perdido no meio da
+          página e dava pra sair sem gravar. */}
+      {alterados.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-linha bg-superficie/95 px-4 py-3 backdrop-blur md:left-[15.5rem]">
+          <div className="mx-auto flex max-w-3xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-sm text-tinta-2">
+              {alterados.length === 1
+                ? "1 campo alterado e ainda não salvo."
+                : `${alterados.length} campos alterados e ainda não salvos.`}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setForm({ ...vazio, ...(salvo ?? {}) })}>
+                Descartar
+              </Button>
+              <Button onClick={salvarRestaurante} disabled={salvando}>
+                {salvando ? "Salvando..." : "Salvar alterações"}
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <input className={inputBase} placeholder="UID do usuário para promover a admin" value={uidAlvo} onChange={(e) => setUidAlvo(e.target.value)} />
-          <Button onClick={() => alterarAdmin(uidAlvo, true)} disabled={!uidAlvo}>
-            <UserPlus size={18} /> Conceder
-          </Button>
-        </div>
-        <p className="mt-2 text-xs text-panda-cinza-texto">
-          O primeiro admin é criado via script (ver firebase/README.md). Depois, gerencie por aqui.
-        </p>
-      </Card>
+      )}
+
+      <ConfirmDialog
+        open={!!revogar}
+        onClose={() => setRevogar(null)}
+        onConfirm={() => revogar && alterarAdmin(revogar.uid, false)}
+        title="Tirar o acesso ao painel?"
+        message={`${revogar?.nome || revogar?.email} deixa de conseguir abrir o painel. A conta no app continua normal.`}
+        confirmLabel="Tirar acesso"
+      />
     </div>
   );
+}
+
+/**
+ * Linha de conferência abaixo do campo. Telefone vira número formatado, link
+ * vira link clicável, valor de exemplo é apontado pelo nome.
+ */
+function Confere({ campo, valor }: { campo: CampoCfg; valor: string }) {
+  const v = valor.trim();
+  if (!v) return null;
+
+  if (campo.exemplo && v === campo.exemplo) {
+    return (
+      <span className="mt-1.5 block text-xs font-semibold text-marca-tinta">
+        Ainda é o valor de exemplo.
+      </span>
+    );
+  }
+
+  if (campo.numerico) {
+    const bonito = telefoneBonito(v);
+    const Icone = campo.chave === "whatsapp" ? MessageCircle : Phone;
+    return (
+      <span className="mt-1.5 flex items-center gap-1.5 text-xs text-tinta-3">
+        <Icone size={12} />
+        {bonito ?? "Faltam dígitos — precisa de DDI + DDD + número."}
+      </span>
+    );
+  }
+
+  if (v.startsWith("http")) {
+    return (
+      <a
+        href={v}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-1.5 flex items-center gap-1.5 text-xs text-tinta-3 hover:text-marca-tinta hover:underline"
+      >
+        <FileText size={12} /> Abrir e conferir
+      </a>
+    );
+  }
+
+  if (campo.chave === "endereco") {
+    return (
+      <a
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}`}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-1.5 flex items-center gap-1.5 text-xs text-tinta-3 hover:text-marca-tinta hover:underline"
+      >
+        <MapPin size={12} /> Ver no mapa como o cliente vê
+      </a>
+    );
+  }
+
+  return null;
 }

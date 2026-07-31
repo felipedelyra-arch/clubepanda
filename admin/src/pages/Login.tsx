@@ -5,6 +5,7 @@ import { auth } from "../lib/firebase";
 import { useAuth } from "../auth/AuthContext";
 import { PandaLogo } from "../components/PandaLogo";
 import { Button } from "../components/ui";
+import { inputBase } from "../components/Modal";
 
 export function Login() {
   const { user, isAdmin, loading } = useAuth();
@@ -36,46 +37,53 @@ export function Login() {
   return (
     // min-h + centro: no celular o teclado abrindo encolhe a viewport e o
     // h-screen cortava o botão Entrar.
-    <div className="flex min-h-full items-center justify-center p-6">
+    <div className="flex min-h-full items-center justify-center bg-fundo p-6">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex justify-center">
-          <PandaLogo size={64} />
+        <div className="mb-7 flex flex-col items-center text-center">
+          <PandaLogo size={104} />
+          <div className="rotulo mt-5">Painel do restaurante</div>
+          <h1 className="display mt-2 text-[30px] leading-none">Clube Panda</h1>
+          <p className="mt-2.5 text-sm text-tinta-2">
+            Acesso restrito à equipe Tio Panda.
+          </p>
         </div>
-        <h1 className="mb-1 text-2xl font-bold">Painel do Admin</h1>
-        <p className="mb-6 text-panda-cinza-texto">Acesso restrito à equipe Tio Panda.</p>
 
         {acessoNegado ? (
-          <div className="rounded-xl bg-panda-vermelho/10 p-4 text-panda-vermelho">
-            Acesso negado. Esta conta não é administradora.
+          <div className="rounded-2xl border border-erro/30 bg-erro/8 p-4 text-sm text-erro-tinta">
+            <strong className="font-semibold">Acesso negado.</strong> Esta conta
+            existe, mas não é administradora. Peça a quem já tem acesso para
+            liberar em Configurações.
           </div>
         ) : (
           <form onSubmit={entrar} className="flex flex-col gap-3">
             <input
               type="email"
+              autoComplete="email"
               placeholder="E-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="min-h-12 rounded-xl bg-panda-cinza px-4 py-3 outline-none focus:ring-2 focus:ring-panda-laranja dark:bg-panda-superficie-dark"
+              className={inputBase}
               required
             />
             <input
               type="password"
+              autoComplete="current-password"
               placeholder="Senha"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
-              className="min-h-12 rounded-xl bg-panda-cinza px-4 py-3 outline-none focus:ring-2 focus:ring-panda-laranja dark:bg-panda-superficie-dark"
+              className={inputBase}
               required
             />
-            <button
-              type="button"
-              onClick={recuperar}
-              className="self-end text-sm text-panda-laranja"
-            >
-              Esqueci a senha
-            </button>
             <Button type="submit" disabled={busy}>
               {busy ? "Entrando..." : "Entrar"}
             </Button>
+            <button
+              type="button"
+              onClick={recuperar}
+              className="mt-1 self-center text-sm font-medium text-tinta-3 transition-colors hover:text-marca-tinta"
+            >
+              Esqueci a senha
+            </button>
           </form>
         )}
       </div>
