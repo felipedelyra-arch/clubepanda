@@ -18,8 +18,13 @@ export { createCheckoutSession, cancelSubscription } from "./subscriptions";
 // Premiações
 export { redeemReward, validateRedemption } from "./redemptions";
 
-// Push (FCM)
-export { sendPush, onPromotionCreated } from "./push";
+// Push (FCM) + central de avisos do app
+export {
+  sendPush,
+  onPromotionCreated,
+  publicarPromocoesAgendadas,
+  onRewardCreated,
+} from "./push";
 
 // Webhooks de pagamento
 export { stripeWebhook } from "./webhooks/stripe";

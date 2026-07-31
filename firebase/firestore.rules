@@ -99,8 +99,17 @@ service cloud.firestore {
     }
 
     // ---- payments ----
-    // Só admin lê (financeiro). Escrita só backend (webhooks de pagamento).
+    // Só admin lê (financeiro). Escrita só backend (webhooks de pagamento e,
+    // se houver integração, o sistema de comanda que fecha conta no salão).
     match /payments/{paymentId} {
+      allow read: if isAdmin();
+      allow write: if false; // apenas Cloud Functions
+    }
+
+    // ---- notificationLogs ----
+    // Histórico de avisos enviados, mostrado na tela de Notificações do painel.
+    // Só admin lê; quem escreve é a function que dispara o aviso.
+    match /notificationLogs/{logId} {
       allow read: if isAdmin();
       allow write: if false; // apenas Cloud Functions
     }
