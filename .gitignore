@@ -14,6 +14,11 @@ serviceAccountKey.json
 google-services.json
 GoogleService-Info.plist
 
+# Assinatura de release do Android (perder = não dá mais pra atualizar o app)
+app/android/key.properties
+*.jks
+*.keystore
+
 # Build
 dist/
 build/

@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>clube_panda</string>
+	<string>Clube Panda</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,6 +26,22 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- image_picker: sem estas duas frases o app CRASHA ao abrir a câmera ou a
+	     galeria na hora de trocar a foto do perfil, e a App Store rejeita o
+	     envio. O texto é o que o iPhone mostra no pedido de permissão. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Usamos a câmera para você tirar a foto do seu perfil no clube.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usamos suas fotos para você escolher a imagem do seu perfil no clube.</string>
+	<!-- Avisos do clube (promoções e prêmios) chegando com o app fechado. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<!-- O app não usa criptografia própria. Sem esta chave, cada envio ao
+	     TestFlight/App Store pede de novo a declaração de exportação. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

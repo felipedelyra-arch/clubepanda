@@ -64,6 +64,24 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Ícone do app nas duas lojas. Regerar com:
+#   dart run flutter_launcher_icons
+# A fonte é a mesma logo que aparece dentro do app, então ícone e app combinam.
+flutter_launcher_icons:
+  image_path: "assets/logo/panda_logo.png"
+  android: "ic_launcher"
+  # Ícone adaptativo (Android 8+): o sistema recorta com a máscara do
+  # fabricante. O `inset` afasta a arte da borda pra logo não sair cortada.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/logo/panda_logo.png"
+  adaptive_icon_foreground_inset: 18
+  min_sdk_android: 21
+  ios: true
+  # iOS não aceita ícone com transparência — o branco entra no lugar dela.
+  remove_alpha_ios: true
+  background_color_ios: "#FFFFFF"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
