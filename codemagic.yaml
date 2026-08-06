@@ -1,0 +1,146 @@
+# Build na nuvem (Codemagic) — Clube Panda
+#
+# Serve pra gerar o pacote do iOS sem ter um Mac. O projeto Flutter fica em
+# `app/`, por isso todo workflow roda com `working_directory: app`.
+#
+# ANTES DO PRIMEIRO BUILD, cadastrar no painel do Codemagic:
+#
+# 1. Grupo de variáveis `firebase` (marcar as duas como "Secure"):
+#    - GOOGLE_SERVICES_JSON        → base64 do app/android/app/google-services.json
+#    - GOOGLE_SERVICE_INFO_PLIST   → base64 do app/ios/Runner/GoogleService-Info.plist
+#    Os dois arquivos são criados pelo `flutterfire configure` e estão no
+#    .gitignore de propósito, então precisam entrar por aqui.
+#    Gerar o base64 no Windows:
+#      certutil -encodehex -f arquivo.json saida.txt 0x40000001
+#
+# 2. Keystore do Android com o nome de referência `clubepanda_keystore`
+#    (Teams → Code signing identities → Android keystores). É o mesmo .jks
+#    descrito em LANCAMENTO.md.
+#
+# 3. Integração App Store Connect (chave de API) e conta de serviço do Google
+#    Play, ambas nas configurações da aplicação no Codemagic.
+#
+# O PRIMEIRO envio de cada loja é manual: o Google Play só aceita automação
+# depois que existe um AAB publicado, e a App Store precisa do registro do app
+# criado antes.
+
+definitions:
+  cache: &cache
+    cache_paths:
+      - $HOME/.pub-cache
+      - $HOME/.gradle/caches
+
+  scripts:
+    - &firebase_android
+      name: Restaura o google-services.json
+      script: |
+        # Sem este arquivo o build sai, mas os plugins do Firebase não são
+        # aplicados (ver android/app/build.gradle.kts) e o app não conecta.
+        echo "$GOOGLE_SERVICES_JSON" | base64 --decode > "$CM_BUILD_DIR/app/android/app/google-services.json"
+
+    - &firebase_ios
+      name: Restaura o GoogleService-Info.plist
+      script: |
+        echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > "$CM_BUILD_DIR/app/ios/Runner/GoogleService-Info.plist"
+
+    - &pub_get
+      name: flutter pub get
+      script: flutter pub get
+
+    - &verifica
+      name: Análise e testes
+      script: |
+        flutter analyze
+        flutter test
+
+workflows:
+  android:
+    name: Android — AAB pra Play Store
+    instance_type: linux_x2
+    max_build_duration: 60
+    working_directory: app
+    environment:
+      flutter: stable
+      java: 17
+      groups:
+        - firebase
+      android_signing:
+        - clubepanda_keystore
+    cache: *cache
+    scripts:
+      - *firebase_android
+      - name: Escreve o android/key.properties
+        script: |
+          # O Gradle deste projeto lê a assinatura daqui; o Codemagic entrega o
+          # keystore em variáveis. Sem este arquivo o release sairia assinado
+          # com a chave de debug e a Play Store recusaria.
+          cat > "$CM_BUILD_DIR/app/android/key.properties" <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=$CM_KEYSTORE_PATH
+          EOF
+      - *pub_get
+      - *verifica
+      - name: Build do appbundle
+        script: flutter build appbundle --release --build-number=$PROJECT_BUILD_NUMBER
+    artifacts:
+      - build/**/outputs/bundle/**/*.aab
+      - build/**/outputs/**/mapping.txt
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - felipedelyra@gmail.com
+        notify:
+          success: true
+          failure: true
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        # Começa no teste interno. Promover pra produção é um clique no console.
+        track: internal
+        submit_as_draft: true
+
+  ios:
+    name: iOS — IPA pro TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    working_directory: app
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - firebase
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.tiopanda.clubePanda
+    cache: *cache
+    scripts:
+      - *firebase_ios
+      - *pub_get
+      - *verifica
+      - name: Aplica os perfis de assinatura no projeto Xcode
+        script: xcode-project use-profiles
+      - name: Build do IPA
+        script: |
+          flutter build ipa --release \
+            --build-number=$PROJECT_BUILD_NUMBER \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - felipedelyra@gmail.com
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Enviar pra revisão da App Store fica manual até a ficha da loja estar
+        # pronta (screenshots, descrição, conta de teste pro revisor).
+        submit_to_app_store: false
