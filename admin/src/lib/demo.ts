@@ -243,6 +243,7 @@ const demoPushLogs: PushLog[] = [
 // Mapa caminho do documento -> dado mock.
 export const demoDocs: Record<string, unknown> = {
   "config/restaurante": demoRestaurante,
+  "config/app": { minBuild: 1 },
 };
 
 // Mapa caminho da coleção -> dados mock.

@@ -48,13 +48,13 @@ class VersionGate extends ConsumerWidget {
   }
 }
 
-class _UpdateScreen extends StatelessWidget {
+class _UpdateScreen extends ConsumerWidget {
   const _UpdateScreen();
 
-  Future<void> _abrirLoja() async {
+  Future<void> _abrirLoja(RestauranteInfo restaurante) async {
     final url = (!kIsWeb && (Platform.isIOS || Platform.isMacOS))
-        ? Restaurante.appStoreUrl
-        : Restaurante.playStoreUrl;
+        ? restaurante.appStoreUrl
+        : restaurante.playStoreUrl;
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -62,7 +62,8 @@ class _UpdateScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final restaurante = ref.watch(restauranteProvider);
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -85,7 +86,7 @@ class _UpdateScreen extends StatelessWidget {
               ),
               const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: _abrirLoja,
+                onPressed: () => _abrirLoja(restaurante),
                 style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52)),
                 child: const Text('Atualizar agora'),

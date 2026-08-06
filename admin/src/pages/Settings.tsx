@@ -276,6 +276,11 @@ export function Settings() {
         </Card>
       </section>
 
+      <section className="mb-6">
+        <SectionTitle>Versão mínima do app</SectionTitle>
+        <VersaoMinima />
+      </section>
+
       <section>
         <SectionTitle>Quem entra no painel</SectionTitle>
         <Card>
@@ -362,6 +367,95 @@ export function Settings() {
         confirmLabel="Tirar acesso"
       />
     </div>
+  );
+}
+
+/**
+ * Trava de versão (`config/app` → `minBuild`). O app lê esse número no boot e
+ * bloqueia quem está abaixo dele com a tela de "atualização necessária"
+ * (`app/lib/core/version_gate.dart`). É o botão de emergência pra quando uma
+ * versão antiga quebra — por isso fica separado do resto, com confirmação.
+ */
+function VersaoMinima() {
+  const { data, loading } = useDoc<{ minBuild?: number }>("config/app");
+  const [valor, setValor] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [confirmar, setConfirmar] = useState(false);
+
+  const atual = data?.minBuild ?? null;
+
+  useEffect(() => {
+    setValor(atual == null ? "" : String(atual));
+  }, [atual]);
+
+  const numero = Number(valor);
+  const valido = valor.trim() !== "" && Number.isInteger(numero) && numero >= 0;
+  const mudou = valido && numero !== (atual ?? -1);
+
+  async function salvar() {
+    if (demoBlock("Versão mínima não alterada")) return;
+    setSalvando(true);
+    try {
+      await setDoc(doc(db, "config", "app"), { minBuild: numero }, { merge: true });
+      toast.success(
+        numero === 0
+          ? "Trava desligada. Todo mundo consegue usar o app."
+          : `Trava em ${numero}. Quem está abaixo disso vê a tela de atualizar.`
+      );
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (loading) return <Spinner />;
+
+  return (
+    <Card>
+      <p className="mb-4 text-sm text-tinta-2">
+        Número da versão (build) mais antiga que ainda pode usar o app. Quem
+        estiver abaixo dele fica preso na tela de atualizar até baixar a nova.
+        Use <strong className="font-semibold text-tinta">0</strong> pra não
+        exigir nada.
+      </p>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <Field label="Build mínima exigida" hint="Só número inteiro. Ex.: 12.">
+          <input
+            className={inputBase}
+            value={valor}
+            onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+            placeholder="0"
+          />
+        </Field>
+        <div className="mb-4">
+          <Button onClick={() => setConfirmar(true)} disabled={!mudou || salvando}>
+            {salvando ? "Salvando..." : "Aplicar"}
+          </Button>
+        </div>
+      </div>
+
+      <p className="text-xs text-tinta-3">
+        {atual == null || atual === 0
+          ? "Hoje: sem exigência — nenhuma versão é bloqueada."
+          : `Hoje: build ${atual}. Quem tem uma anterior já está bloqueado.`}
+      </p>
+
+      <ConfirmDialog
+        open={confirmar}
+        onClose={() => setConfirmar(false)}
+        onConfirm={salvar}
+        title={numero === 0 ? "Desligar a trava?" : `Exigir a build ${numero}?`}
+        message={
+          numero === 0
+            ? "Nenhuma versão do app fica bloqueada."
+            : `Todo cliente com build anterior a ${numero} para de usar o app na hora e só volta depois de atualizar na loja. Confira que a versão nova já está publicada.`
+        }
+        confirmLabel={numero === 0 ? "Desligar" : "Bloquear versões antigas"}
+      />
+    </Card>
   );
 }
 

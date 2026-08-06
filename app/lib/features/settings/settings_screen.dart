@@ -181,11 +181,13 @@ Future<void> _abrirUrl(BuildContext context, String url) async {
 
 /// Botões grandes de contato — fáceis pra qualquer idade. Moraram na Home
 /// até virarem item de configuração: contato é suporte, não vitrine.
-class _FaleConosco extends StatelessWidget {
+class _FaleConosco extends ConsumerWidget {
   const _FaleConosco();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Telefone, WhatsApp e endereço vêm do painel (`config/restaurante`).
+    final restaurante = ref.watch(restauranteProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -195,7 +197,7 @@ class _FaleConosco extends StatelessWidget {
               child: _ContatoBtn(
                 icone: Icons.phone_rounded,
                 label: 'Ligar',
-                onTap: () => _abrirUrl(context, 'tel:${Restaurante.telefone}'),
+                onTap: () => _abrirUrl(context, 'tel:${restaurante.telefone}'),
               ),
             ),
             const SizedBox(width: 12),
@@ -204,7 +206,7 @@ class _FaleConosco extends StatelessWidget {
                 icone: Icons.chat_rounded,
                 label: 'WhatsApp',
                 onTap: () => _abrirUrl(
-                    context, 'https://wa.me/${Restaurante.whatsapp}'),
+                    context, 'https://wa.me/${restaurante.whatsapp}'),
               ),
             ),
             const SizedBox(width: 12),
@@ -213,17 +215,17 @@ class _FaleConosco extends StatelessWidget {
                 icone: Icons.location_on_rounded,
                 label: 'Como chegar',
                 onTap: () => _abrirUrl(context,
-                    'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(Restaurante.endereco)}'),
+                    'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(restaurante.endereco)}'),
               ),
             ),
           ],
         ),
         // Só em debug: lembrete de que os contatos ainda são de exemplo.
         // Em release o bloco nem existe.
-        if (kDebugMode && Restaurante.contatosPendentes) ...[
+        if (kDebugMode && restaurante.contatosPendentes) ...[
           const SizedBox(height: 12),
           const Text(
-            '⚠️ Contatos de exemplo — preencher em core/restaurante.dart antes de publicar.',
+            '⚠️ Contatos de exemplo — preencher em Configurações no painel.',
             style: TextStyle(
                 color: PandaColors.vermelhoAcento, fontSize: 12, height: 1.3),
           ),
@@ -286,11 +288,10 @@ class _Rodape extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final versao = ref.watch(_versaoAppProvider).value;
+    final nome = ref.watch(restauranteProvider).nome;
     return Center(
       child: Text(
-        versao == null
-            ? 'Clube Panda · ${Restaurante.nome}'
-            : 'Clube Panda · ${Restaurante.nome} · $versao',
+        versao == null ? 'Clube Panda · $nome' : 'Clube Panda · $nome · $versao',
         textAlign: TextAlign.center,
         style: const TextStyle(color: PandaColors.cinzaTexto, fontSize: 12),
       ),
@@ -975,11 +976,12 @@ class _EditarDadosSheetState extends ConsumerState<_EditarDadosSheet> {
 }
 
 /// Termos e política de privacidade — texto base, ajuste conforme o jurídico.
-class _TermosSheet extends StatelessWidget {
+class _TermosSheet extends ConsumerWidget {
   const _TermosSheet();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final restaurante = ref.watch(restauranteProvider);
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
@@ -1007,13 +1009,26 @@ class _TermosSheet extends StatelessWidget {
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: () async {
-              final uri = Uri.parse(Restaurante.politicaPrivacidadeUrl);
+              final uri = Uri.parse(restaurante.politicaPrivacidadeUrl);
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               }
             },
             icon: const Icon(Icons.open_in_new_rounded, size: 18),
             label: const Text('Ver política de privacidade completa'),
+            style:
+                OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final uri = Uri.parse(restaurante.termosUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            label: const Text('Ver termos de uso completos'),
             style:
                 OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           ),

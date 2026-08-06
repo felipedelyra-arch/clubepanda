@@ -41,8 +41,30 @@ void main() {
     });
   });
 
-  test('contatos de exemplo são marcados como pendentes', () {
-    // Enquanto os placeholders não forem trocados, o app sabe que faltam dados.
-    expect(Restaurante.contatosPendentes, isTrue);
+  group('RestauranteInfo', () {
+    test('sem doc no Firestore, cai nos valores de exemplo', () {
+      // Enquanto o painel não preencher, o app sabe que faltam dados.
+      final r = RestauranteInfo.fromMap(null);
+      expect(r.telefone, RestauranteInfo.padrao.telefone);
+      expect(r.contatosPendentes, isTrue);
+    });
+
+    test('campo preenchido no painel vence o compilado', () {
+      final r = RestauranteInfo.fromMap({
+        'telefone': '551433221100',
+        'whatsapp': '5514991234567',
+        'endereco': 'Rua das Flores, 10 — Bauru/SP',
+      });
+      expect(r.telefone, '551433221100');
+      expect(r.contatosPendentes, isFalse);
+      // O que o painel não mandou continua vindo do padrão.
+      expect(r.termosUrl, RestauranteInfo.padrao.termosUrl);
+    });
+
+    test('campo em branco ou de outro tipo não apaga o padrão', () {
+      final r = RestauranteInfo.fromMap({'nome': '  ', 'telefone': 42});
+      expect(r.nome, RestauranteInfo.padrao.nome);
+      expect(r.telefone, RestauranteInfo.padrao.telefone);
+    });
   });
 }

@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
+import '../../core/restaurante.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/dimens.dart';
 import '../../core/widgets/state_views.dart';
@@ -580,8 +584,14 @@ class _IndicarSheetState extends ConsumerState<_IndicarSheet> {
     }
   }
 
-  String get _mensagem =>
-      'Entra no Clube Panda comigo! Usa meu código *$_codigo* no cadastro. 🐼🍣';
+  /// O link da loja vem do painel (`config/restaurante`). Sem ele na mensagem,
+  /// o amigo recebe o código e não sabe onde baixar.
+  String get _mensagem {
+    final r = ref.read(restauranteProvider);
+    final loja = (!kIsWeb && Platform.isIOS) ? r.appStoreUrl : r.playStoreUrl;
+    return 'Entra no Clube Panda comigo! Usa meu código *$_codigo* no cadastro. '
+        '🐼🍣\n$loja';
+  }
 
   Future<void> _whatsapp() async {
     final uri = Uri.parse(
