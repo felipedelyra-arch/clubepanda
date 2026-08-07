@@ -100,15 +100,13 @@ cd app && flutter build appbundle --release
 | `UIBackgroundModes: remote-notification` | ✅ |
 | `ITSAppUsesNonExemptEncryption = false` (some com a pergunta de exportação a cada envio) | ✅ |
 | Ícone 1024 sem transparência | ✅ |
-| **Mac com Xcode** (ou CI tipo Codemagic) | ❌ só você |
+| **Mac com Xcode** (ou serviço de build na nuvem) | ❌ só você |
 | **Conta Apple Developer** (US$ 99/ano) | ❌ só você |
 | Capability **Push Notifications** + chave **APNs** no Firebase | ❌ no Xcode/console |
 | **Sign in with Apple** — obrigatório porque o app tem login com Google | ❌ no Xcode/console |
 
-Não dá pra compilar iOS no Windows. É Mac ou serviço de build na nuvem — o
-`codemagic.yaml` na raiz já tem os dois workflows prontos (AAB pro Google Play,
-IPA pro TestFlight). O cabeçalho do arquivo lista o que cadastrar no painel do
-Codemagic antes do primeiro build.
+Não dá pra compilar iOS no Windows. É Mac emprestado/alugado ou serviço de build
+na nuvem.
 
 > EAS (`eas init`) é da Expo e só builda React Native — não serve pra Flutter.
 
