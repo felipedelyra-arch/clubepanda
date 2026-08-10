@@ -14,8 +14,8 @@ final demoIsSubscriber = StateProvider<bool>((_) => true);
 
 final _demoUser = AppUser(
   uid: 'u_demo',
-  nome: 'Ana Souza',
-  email: 'ana@email.com',
+  nome: 'Felipe Souza',
+  email: 'felipe@email.com',
   telefone: '(14) 99911-0001',
   nascimento: DateTime(1992, 7, 23),
 );
@@ -31,7 +31,7 @@ final _notificacoesIniciais = [
   ),
   AppNotification(
     id: 'n2',
-    titulo: 'Feliz aniversário, Ana! 🎂',
+    titulo: 'Feliz aniversário, Felipe! 🎂',
     corpo: 'Sua sobremesa é por nossa conta hoje. Mostre o app no caixa.',
     tipo: 'aniversario',
     criadoEm: DateTime.now().subtract(const Duration(hours: 8)),
@@ -259,7 +259,7 @@ final _demoRewards = [
 final _demoPlans = [
   Plan(
     id: 'p_mensal',
-    nome: 'Clube Panda',
+    nome: 'PandaVip',
     preco: 4.90,
     intervalo: 'mês',
     beneficios: [

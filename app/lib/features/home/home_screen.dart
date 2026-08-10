@@ -7,7 +7,6 @@ import '../../core/services/services.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/dimens.dart';
-import '../../core/widgets/panda_logo.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/widgets/entrada.dart';
 import '../../core/models/models.dart';
@@ -53,10 +52,9 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
             children: escalonar([
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const PandaLogo(size: 40, showWordmark: false),
-                  const _SinoNotificacoes(),
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: const [
+                  _SinoNotificacoes(),
                 ],
               ),
               Padding(
