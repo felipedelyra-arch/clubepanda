@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'colors.dart';
 import 'dimens.dart';
 
-/// Tema Clube Panda — minimalista, quente, laranja sóbrio como acento.
+/// Tema PandaVip — minimalista, quente, laranja sóbrio como acento.
 /// Corpo sempre em Inter. Títulos dependem de [usarSerifa]:
 /// Fraunces (serifa, ar de restaurante) ou Inter com tracking negativo
 /// (ar de produto de tecnologia).

@@ -114,7 +114,7 @@ class PhoneFrame extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Clube Panda — pré-visualização (demo web)',
+            'PandaVip — pré-visualização (demo web)',
             style: TextStyle(
               color: isDark ? Colors.white54 : Colors.black45,
               fontSize: 13,

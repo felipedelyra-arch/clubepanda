@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Clube Panda — Storage Rules
+// PandaVip — Storage Rules
 service firebase.storage {
   match /b/{bucket}/o {
 

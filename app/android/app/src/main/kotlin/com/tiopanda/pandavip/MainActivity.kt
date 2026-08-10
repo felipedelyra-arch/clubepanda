@@ -1,4 +1,4 @@
-package com.tiopanda.clube_panda
+package com.tiopanda.pandavip
 
 import io.flutter.embedding.android.FlutterActivity
 

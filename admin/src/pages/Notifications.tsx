@@ -29,7 +29,7 @@ const modelos = [
     icone: Megaphone,
     label: "Promoção nova",
     titulo: "Promoção nova no Clube",
-    corpo: "Passa aqui hoje: tem oferta liberada pra quem é do Clube Panda.",
+    corpo: "Passa aqui hoje: tem oferta liberada pra quem é do PandaVip.",
   },
   {
     id: "premio",
@@ -266,7 +266,7 @@ function PreviaPush({ titulo, corpo }: { titulo: string; corpo: string }) {
       <div className="rounded-2xl border border-linha bg-superficie p-3 shadow-sm">
         <div className="mb-1.5 flex items-center gap-2">
           <img src={logoUrl} alt="" width={18} height={18} className="rounded" />
-          <span className="text-xs font-semibold text-tinta-3">Clube Panda</span>
+          <span className="text-xs font-semibold text-tinta-3">PandaVip</span>
           <span className="text-xs text-tinta-3">· agora</span>
         </div>
         <div className={`line-clamp-1 text-sm font-semibold ${vazio ? "text-tinta-3" : ""}`}>

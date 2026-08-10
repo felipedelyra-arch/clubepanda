@@ -58,3 +58,6 @@ firebase/functions/lib/
 
 # Documentos comerciais (não versionar)
 Proposta-Comercial-*.pdf
+
+# Cache do compilador Kotlin (Gradle)
+app/android/.kotlin/

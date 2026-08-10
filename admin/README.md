@@ -1,4 +1,4 @@
-# Clube Panda — Painel do Admin (React)
+# PandaVip — Painel do Admin (React)
 
 Painel web onde o dono do Tio Panda administra o clube. Mesmo backend Firebase do app.
 

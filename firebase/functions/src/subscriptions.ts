@@ -41,8 +41,8 @@ export const createCheckoutSession = onCall(async (req) => {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-    success_url: successUrl ?? "https://clube-panda.web.app/sucesso",
-    cancel_url: cancelUrl ?? "https://clube-panda.web.app/planos",
+    success_url: successUrl ?? "https://pandavip.web.app/sucesso",
+    cancel_url: cancelUrl ?? "https://pandavip.web.app/planos",
     metadata: { firebaseUid: uid, planId },
     subscription_data: { metadata: { firebaseUid: uid, planId } },
   });

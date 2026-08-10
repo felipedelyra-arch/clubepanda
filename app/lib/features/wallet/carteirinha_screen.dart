@@ -160,7 +160,7 @@ class _Cartao extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               const Expanded(
-                child: Text('Clube Panda',
+                child: Text('PandaVip',
                     style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,

@@ -16,7 +16,7 @@ existem `google-services.json` (Android) nem `GoogleService-Info.plist` (iOS).
 ```bash
 dart pub global activate flutterfire_cli
 cd app
-flutterfire configure --project=clube-panda
+flutterfire configure --project=pandavip
 ```
 
 Isso reescreve `firebase_options.dart` com as chaves reais e cria os dois arquivos
@@ -64,8 +64,8 @@ a ficha da loja pede o mesmo link.
 
 | Item | Status |
 |---|---|
-| `applicationId` `com.tiopanda.clube_panda` | ✅ |
-| Nome no launcher: "Clube Panda" | ✅ |
+| `applicationId` `com.tiopanda.pandavip` | ✅ |
+| Nome no launcher: "PandaVip" | ✅ |
 | Ícone gerado da logo (inclusive adaptativo) | ✅ `dart run flutter_launcher_icons` |
 | Permissões `INTERNET` e `POST_NOTIFICATIONS` | ✅ |
 | `<queries>` de `tel:`/`https:` (senão os botões de contato não abrem no Android 11+) | ✅ |
@@ -75,7 +75,7 @@ a ficha da loja pede o mesmo link.
 Sem keystore o release sai assinado com a chave de **debug** e a Play Store recusa.
 
 ```bash
-keytool -genkey -v -keystore %USERPROFILE%\clubepanda-upload.jks \
+keytool -genkey -v -keystore %USERPROFILE%\pandavip-upload.jks \
   -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 ```
 
@@ -95,7 +95,7 @@ cd app && flutter build appbundle --release
 
 | Item | Status |
 |---|---|
-| Bundle id `com.tiopanda.clubePanda`, nome "Clube Panda" | ✅ |
+| Bundle id `com.tiopanda.pandavip`, nome "PandaVip" | ✅ |
 | `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` (sem elas o app **crasha** ao trocar a foto do perfil e a Apple rejeita) | ✅ |
 | `UIBackgroundModes: remote-notification` | ✅ |
 | `ITSAppUsesNonExemptEncryption = false` (some com a pergunta de exportação a cada envio) | ✅ |

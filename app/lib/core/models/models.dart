@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modelos das coleções Firestore do Clube Panda.
+/// Modelos das coleções Firestore do PandaVip.
 /// Espelham o backend — mudou aqui, confira as rules e as Functions.
 
 class AppUser {

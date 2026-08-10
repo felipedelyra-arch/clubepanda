@@ -1,4 +1,4 @@
-# Clube Panda — Tio Panda 🐼🍣
+# PandaVip — Tio Panda 🐼🍣
 
 Clube de assinatura do restaurante japonês **Tio Panda**. Cliente paga mensalidade e ganha
 promoções e premiações (rodízios, pratos, sobremesas, brindes, cupons) lançadas pelo dono.

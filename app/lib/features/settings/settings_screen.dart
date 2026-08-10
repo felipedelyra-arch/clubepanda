@@ -291,7 +291,7 @@ class _Rodape extends ConsumerWidget {
     final nome = ref.watch(restauranteProvider).nome;
     return Center(
       child: Text(
-        versao == null ? 'Clube Panda · $nome' : 'Clube Panda · $nome · $versao',
+        versao == null ? 'PandaVip · $nome' : 'PandaVip · $nome · $versao',
         textAlign: TextAlign.center,
         style: const TextStyle(color: PandaColors.cinzaTexto, fontSize: 12),
       ),
@@ -995,8 +995,8 @@ class _TermosSheet extends ConsumerWidget {
               style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
           ...const [
-            ('Sobre o Clube Panda',
-                'O Clube Panda é o programa de vantagens do restaurante Tio Panda. Ao se tornar sócio, você tem acesso a promoções e prêmios liberados pelo restaurante, dentro dos prazos e condições informados em cada oferta.'),
+            ('Sobre o PandaVip',
+                'O PandaVip é o programa de vantagens do restaurante Tio Panda. Ao se tornar sócio, você tem acesso a promoções e prêmios liberados pelo restaurante, dentro dos prazos e condições informados em cada oferta.'),
             ('Uso dos seus dados',
                 'Coletamos apenas os dados necessários para identificar você como sócio e oferecer os benefícios: nome, e-mail, telefone, endereço e data de nascimento. Não vendemos seus dados a terceiros.'),
             ('Prêmios e resgates',

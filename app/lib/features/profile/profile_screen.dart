@@ -589,7 +589,7 @@ class _IndicarSheetState extends ConsumerState<_IndicarSheet> {
   String get _mensagem {
     final r = ref.read(restauranteProvider);
     final loja = (!kIsWeb && Platform.isIOS) ? r.appStoreUrl : r.playStoreUrl;
-    return 'Entra no Clube Panda comigo! Usa meu código *$_codigo* no cadastro. '
+    return 'Entra no PandaVip comigo! Usa meu código *$_codigo* no cadastro. '
         '🐼🍣\n$loja';
   }
 

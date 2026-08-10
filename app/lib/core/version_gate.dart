@@ -79,7 +79,7 @@ class _UpdateScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 12),
               const Text(
-                'Saiu uma versão nova do Clube Panda com melhorias importantes. '
+                'Saiu uma versão nova do PandaVip com melhorias importantes. '
                 'Atualize pra continuar usando.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: PandaColors.cinzaTexto, height: 1.5),

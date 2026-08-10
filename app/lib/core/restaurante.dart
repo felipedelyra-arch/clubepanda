@@ -53,7 +53,7 @@ class RestauranteInfo {
     politicaPrivacidadeUrl: 'https://tiopanda.com.br/privacidade',
     termosUrl: 'https://tiopanda.com.br/termos',
     playStoreUrl:
-        'https://play.google.com/store/apps/details?id=com.tiopanda.clube_panda',
+        'https://play.google.com/store/apps/details?id=com.tiopanda.pandavip',
     appStoreUrl: 'https://apps.apple.com/app/id000000000',
   );
 

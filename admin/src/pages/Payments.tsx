@@ -35,7 +35,7 @@ const aprovado = (p: Payment) => p.status === "aprovado";
  * olho e saber onde o dinheiro foi gasto, sem abrir nada.
  */
 function descricaoCurta(p: Payment): string {
-  if (tipoDe(p) === "assinatura") return "Mensalidade do Clube Panda";
+  if (tipoDe(p) === "assinatura") return "Mensalidade do PandaVip";
   const partes = [p.mesa ? `Mesa ${p.mesa}` : "Consumo no salão"];
   const n = p.itens?.length ?? 0;
   if (n) partes.push(n === 1 ? "1 item" : `${n} itens`);

@@ -190,7 +190,7 @@ const demoRedemptions: Redemption[] = [
 const demoPlans: Plan[] = [
   {
     id: "p_mensal",
-    nome: "Clube Panda",
+    nome: "PandaVip",
     preco: 4.9,
     intervalo: "mês",
     beneficios: [

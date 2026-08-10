@@ -19,7 +19,7 @@ val keystoreProperties = Properties().apply {
 val temAssinatura = keystorePropertiesFile.exists()
 
 android {
-    namespace = "com.tiopanda.clube_panda"
+    namespace = "com.tiopanda.pandavip"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.tiopanda.clube_panda"
+        applicationId = "com.tiopanda.pandavip"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

@@ -1,7 +1,7 @@
 {
-  "name": "clube-panda-functions",
+  "name": "pandavip-functions",
   "version": "1.0.0",
-  "description": "Cloud Functions do Clube Panda (Tio Panda)",
+  "description": "Cloud Functions do PandaVip (Tio Panda)",
   "main": "lib/index.js",
   "engines": {
     "node": "22"

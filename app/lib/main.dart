@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,12 +33,16 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     // Crashlytics: captura erros de framework e assíncronos não tratados.
-    FlutterError.onError =
-        FirebaseCrashlytics.instance.recordFlutterFatalError;
-    PlatformDispatcher.instance.onError = (error, stack) {
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
+    // Não existe no web (o pacote só tem Android/iOS) — tocar na instância lá
+    // estoura antes do runApp e deixa a página em branco.
+    if (!kIsWeb) {
+      FlutterError.onError =
+          FirebaseCrashlytics.instance.recordFlutterFatalError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+        return true;
+      };
+    }
   }
 
   runApp(
@@ -63,7 +68,7 @@ class ClubePandaApp extends ConsumerWidget {
     final textScale = ref.watch(textScaleProvider);
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
-      title: 'Clube Panda',
+      title: 'PandaVip',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,

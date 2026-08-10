@@ -42,7 +42,7 @@ export function Login() {
         <div className="mb-7 flex flex-col items-center text-center">
           <PandaLogo size={104} />
           <div className="rotulo mt-5">Painel do restaurante</div>
-          <h1 className="display mt-2 text-[30px] leading-none">Clube Panda</h1>
+          <h1 className="display mt-2 text-[30px] leading-none">PandaVip</h1>
           <p className="mt-2.5 text-sm text-tinta-2">
             Acesso restrito à equipe Tio Panda.
           </p>

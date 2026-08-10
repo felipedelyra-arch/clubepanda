@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Clube Panda — Firestore Security Rules
+// PandaVip — Firestore Security Rules
 //
 // Coleções: users, subscriptions, plans, promotions, rewards, redemptions, payments
 //

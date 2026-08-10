@@ -1,6 +1,6 @@
-# Clube Panda — App do Cliente (Flutter)
+# PandaVip — App do Cliente (Flutter)
 
-App do cliente do Clube Panda (Tio Panda). iOS + Android a partir de um código.
+App do cliente do PandaVip (Tio Panda). iOS + Android a partir de um código.
 
 ## Stack
 
@@ -38,7 +38,7 @@ flutter pub get
 
 # Configurar Firebase (gera firebase_options.dart + arquivos nativos)
 dart pub global activate flutterfire_cli
-flutterfire configure --project=clube-panda
+flutterfire configure --project=pandavip
 
 flutter run
 ```

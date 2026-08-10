@@ -59,5 +59,5 @@ http
     });
   })
   .listen(PORT, () => {
-    console.log(`Clube Panda demo (release) em http://localhost:${PORT}/`);
+    console.log(`PandaVip demo (release) em http://localhost:${PORT}/`);
   });

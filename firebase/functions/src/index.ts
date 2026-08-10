@@ -1,5 +1,5 @@
 /**
- * Clube Panda — Cloud Functions (entry point).
+ * PandaVip — Cloud Functions (entry point).
  * Região padrão: southamerica-east1 (São Paulo).
  */
 import { setGlobalOptions } from "firebase-functions/v2";

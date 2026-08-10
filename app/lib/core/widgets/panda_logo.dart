@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 
-/// Logo oficial do Tio Panda / Clube Panda.
+/// Logo oficial do Tio Panda / PandaVip.
 /// O asset `assets/logo/panda_logo.png` já contém a arte circular com
 /// o panda e o texto "TioPanda", então não precisa de wordmark separado.
 ///

@@ -1,4 +1,4 @@
-# Clube Panda — Backend Firebase
+# PandaVip — Backend Firebase
 
 Backend único compartilhado pelo app (Flutter) e pelo painel (React).
 
@@ -18,7 +18,7 @@ npm i -g firebase-tools
 firebase login
 
 # 2. Criar/selecionar projeto
-firebase projects:create clube-panda   # ou use um existente
+firebase projects:create pandavip   # ou use um existente
 firebase use --add
 
 # 3. Dependências das functions

@@ -7,7 +7,7 @@ import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/panda_logo.dart';
 
-/// Tour inicial (primeira abertura). Mostra o que o Clube Panda oferece e,
+/// Tour inicial (primeira abertura). Mostra o que o PandaVip oferece e,
 /// no último passo, oferece ativar as notificações. Visto só uma vez —
 /// controlado por [onboardingSeenProvider] (shared_preferences).
 class OnboardingScreen extends ConsumerStatefulWidget {

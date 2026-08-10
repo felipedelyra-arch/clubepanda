@@ -164,7 +164,7 @@ async function avisarPromocao(
 ) {
   await enviarAviso({
     titulo: `🐼 ${promo.titulo ?? "Nova promoção!"}`,
-    corpo: promo.descricao ?? "Confira no Clube Panda.",
+    corpo: promo.descricao ?? "Confira no PandaVip.",
     publico: promo.apenasAssinantes ? "assinantes" : "todos",
     origem: "promocao",
     tipo: "promo",

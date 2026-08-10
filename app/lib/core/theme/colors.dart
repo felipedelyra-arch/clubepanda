@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Paleta Clube Panda (Tio Panda) — laranja sóbrio e minimalista.
+/// Paleta PandaVip (Tio Panda) — laranja sóbrio e minimalista.
 /// Laranja é acento (CTA, destaques), não preenchimento. Base em neutros quentes.
 abstract class PandaColors {
   // Marca
