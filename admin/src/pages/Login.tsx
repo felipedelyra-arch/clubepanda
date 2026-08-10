@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { toast } from "sonner";
 import { auth } from "../lib/firebase";
@@ -33,6 +34,10 @@ export function Login() {
 
   // Logado mas não-admin => bloqueia.
   const acessoNegado = !loading && user && !isAdmin;
+
+  // Login resolvido: sai do formulário. Sem isto o admin autentica e fica
+  // olhando a mesma tela — nada mais nesta rota tira ele daqui.
+  if (!loading && user && isAdmin) return <Navigate to="/" replace />;
 
   return (
     // min-h + centro: no celular o teclado abrindo encolhe a viewport e o
