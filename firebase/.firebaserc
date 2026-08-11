@@ -1,5 +1,18 @@
 {
   "projects": {
     "default": "pandavip"
-  }
+  },
+  "targets": {
+    "pandavip": {
+      "hosting": {
+        "painel": [
+          "pandavip"
+        ],
+        "app": [
+          "pandavip-app"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

@@ -204,28 +204,7 @@ class _GorjetaSheetState extends ConsumerState<_GorjetaSheet> {
           const SizedBox(height: 16),
           // O único aviso que realmente protege o cliente: chave errada não tem
           // como o app detectar, mas o banco mostra o nome antes de confirmar.
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: PandaColors.laranjaSuave,
-              borderRadius: PandaRadius.bsm,
-            ),
-            child: const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline, size: 18, color: PandaColors.laranja),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Confira o nome do favorecido na tela do seu banco antes '
-                    'de confirmar.',
-                    style: TextStyle(
-                        fontSize: 13, height: 1.4, color: PandaColors.preto),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _AvisoFavorecido(),
           const SizedBox(height: 16),
           TextButton(
             onPressed: () => setState(() {
@@ -239,6 +218,52 @@ class _GorjetaSheetState extends ConsumerState<_GorjetaSheet> {
             // com o context de fora derruba a página inteira em vez da folha.
             onPressed: () => Navigator.pop(context),
             child: const Text('Pronto'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Aviso de conferir o favorecido antes de pagar.
+///
+/// Fundo cor fixa vira mancha clara no tema escuro — aqui o laranja entra como
+/// véu sobre a superfície do tema, e o texto vem do próprio tema, então o bloco
+/// tem o mesmo peso visual nos dois modos sem perder contraste.
+class _AvisoFavorecido extends StatelessWidget {
+  const _AvisoFavorecido();
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    final escuro = tema.brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: escuro
+            ? PandaColors.laranja.withValues(alpha: 0.12)
+            : PandaColors.laranjaSuave,
+        borderRadius: PandaRadius.bsm,
+        border: Border.all(
+          color: PandaColors.laranja.withValues(alpha: escuro ? 0.38 : 0.22),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 18, color: PandaColors.laranja),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Confira o nome do favorecido na tela do seu banco antes de '
+              'confirmar.',
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: tema.textTheme.bodyMedium?.color,
+              ),
+            ),
           ),
         ],
       ),

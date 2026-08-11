@@ -61,3 +61,8 @@ Proposta-Comercial-*.pdf
 
 # Cache do compilador Kotlin (Gradle)
 app/android/.kotlin/
+
+# Área de publicação do Firebase Hosting: cópia dos builds de admin/dist e
+# app/build/web. O Hosting exige que a pasta publicada fique dentro do
+# diretório do firebase.json, e build não entra no versionamento.
+firebase/hosting/
