@@ -342,3 +342,44 @@ class Subscription {
     );
   }
 }
+
+/// Alguém da equipe que pode receber gorjeta, cadastrado pelo dono no painel.
+///
+/// A chave Pix fica visível pra qualquer sócio que resgatar um prêmio — por
+/// isso o painel orienta a cadastrar chave aleatória, e não CPF ou telefone.
+class Funcionario {
+  const Funcionario({
+    required this.id,
+    required this.nome,
+    required this.chavePix,
+    this.funcao = '',
+    this.ativo = true,
+  });
+
+  final String id;
+  final String nome;
+
+  /// Chave Pix de destino. O app não valida (não tem como): quem confere é o
+  /// banco do cliente, que mostra o nome do favorecido antes de confirmar.
+  final String chavePix;
+
+  /// "Garçom", "Cozinha"… só pra ajudar o cliente a reconhecer quem o atendeu.
+  final String funcao;
+
+  /// Desligado some da lista do app sem perder o histórico do cadastro.
+  final bool ativo;
+
+  /// Dá pra receber gorjeta? Sem chave não adianta aparecer na lista.
+  bool get recebeGorjeta => ativo && chavePix.trim().isNotEmpty;
+
+  factory Funcionario.fromDoc(DocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data() ?? {};
+    return Funcionario(
+      id: d.id,
+      nome: m['nome'] ?? '',
+      chavePix: m['chavePix'] ?? '',
+      funcao: m['funcao'] ?? '',
+      ativo: m['ativo'] ?? true,
+    );
+  }
+}

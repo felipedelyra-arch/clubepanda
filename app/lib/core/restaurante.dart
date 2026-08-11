@@ -16,6 +16,7 @@ class RestauranteInfo {
     required this.telefone,
     required this.whatsapp,
     required this.endereco,
+    required this.cidade,
     required this.politicaPrivacidadeUrl,
     required this.termosUrl,
     required this.playStoreUrl,
@@ -32,6 +33,11 @@ class RestauranteInfo {
 
   /// Endereço usado na busca do Google Maps.
   final String endereco;
+
+  /// Cidade do recebedor no código Pix da gorjeta (campo 60 do BR Code, no
+  /// máximo 15 caracteres depois de tirar acento). Não é endereço: é exigência
+  /// do padrão do Banco Central.
+  final String cidade;
 
   /// Política de privacidade pública (exigida pelas lojas).
   final String politicaPrivacidadeUrl;
@@ -50,6 +56,7 @@ class RestauranteInfo {
     telefone: '551430000000',
     whatsapp: '5514990000000',
     endereco: 'Tio Panda restaurante',
+    cidade: 'Bauru',
     politicaPrivacidadeUrl: 'https://tiopanda.com.br/privacidade',
     termosUrl: 'https://tiopanda.com.br/termos',
     playStoreUrl:
@@ -72,6 +79,7 @@ class RestauranteInfo {
       telefone: campo('telefone', p.telefone),
       whatsapp: campo('whatsapp', p.whatsapp),
       endereco: campo('endereco', p.endereco),
+      cidade: campo('cidade', p.cidade),
       politicaPrivacidadeUrl:
           campo('politicaPrivacidadeUrl', p.politicaPrivacidadeUrl),
       termosUrl: campo('termosUrl', p.termosUrl),

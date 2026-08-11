@@ -12,6 +12,7 @@ import type {
   Subscription,
   Payment,
   Restaurante,
+  Funcionario,
   MenuItem,
   PushLog,
 } from "./types";
@@ -204,11 +205,20 @@ const demoPlans: Plan[] = [
   },
 ];
 
+/** Equipe fictícia — chaves aleatórias inventadas, nada real. */
+const demoFuncionarios: Funcionario[] = [
+  { id: "f_lucas", nome: "Lucas Ferreira", funcao: "Garçom", chavePix: "7b3e1c9a-4d52-4f8b-9c21-6a0e5d7f2b18", ativo: true, criadoEm: diasAtras(120) },
+  { id: "f_marina", nome: "Marina Alves", funcao: "Garçonete", chavePix: "2f9d4a71-8c36-4e05-b7da-1e63c9f0a4b2", ativo: true, criadoEm: diasAtras(80) },
+  { id: "f_rafael", nome: "Rafael Tanaka", funcao: "Sushiman", chavePix: "c14b8e60-3a77-4d92-8f15-5b2e7c0d9a63", ativo: true, criadoEm: diasAtras(200) },
+  { id: "f_paulo", nome: "Paulo Ribeiro", funcao: "Garçom", chavePix: "e5a92d34-7b18-4c6f-9e02-3d81f4a7b5c9", ativo: false, criadoEm: diasAtras(300) },
+];
+
 const demoRestaurante: Restaurante = {
   nome: "Tio Panda",
   telefone: "551430000000",
   whatsapp: "5514990000000",
   endereco: "Tio Panda restaurante",
+  cidade: "Bauru",
   politicaPrivacidadeUrl: "https://tiopanda.com.br/privacidade",
   termosUrl: "https://tiopanda.com.br/termos",
   playStoreUrl: "https://play.google.com/store/apps/details?id=com.tiopanda.clube",
@@ -257,6 +267,7 @@ export const demoData: Record<string, unknown[]> = {
   plans: demoPlans,
   menu: demoMenu,
   notificationLogs: demoPushLogs,
+  funcionarios: demoFuncionarios,
 };
 
 // Usuário admin fake pro AuthContext no modo demo. O `displayName` é de onde a

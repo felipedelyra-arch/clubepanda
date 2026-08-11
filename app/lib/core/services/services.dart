@@ -123,6 +123,24 @@ final destaquesProvider = Provider<AsyncValue<List<MenuItem>>>((ref) {
   });
 });
 
+/// Equipe que pode receber gorjeta. Sem `orderBy` na query pra não exigir
+/// índice composto; ordena em memória, que numa lista de funcionários é nada.
+final funcionariosProvider = StreamProvider<List<Funcionario>>((ref) {
+  return ref
+      .watch(firestoreProvider)
+      .collection('funcionarios')
+      .where('ativo', isEqualTo: true)
+      .snapshots()
+      .map((s) {
+    final lista = s.docs
+        .map(Funcionario.fromDoc)
+        .where((f) => f.recebeGorjeta)
+        .toList();
+    lista.sort((a, b) => a.nome.toLowerCase().compareTo(b.nome.toLowerCase()));
+    return lista;
+  });
+});
+
 /// Planos (vitrine).
 final plansProvider = StreamProvider<List<Plan>>((ref) {
   return ref

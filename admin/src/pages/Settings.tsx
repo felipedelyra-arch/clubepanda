@@ -32,6 +32,7 @@ const vazio: Restaurante = {
   telefone: "",
   whatsapp: "",
   endereco: "",
+  cidade: "",
   politicaPrivacidadeUrl: "",
   termosUrl: "",
   playStoreUrl: "",
@@ -80,6 +81,13 @@ const contato: CampoCfg[] = [
     hint: "Botão Como chegar — é o texto que vai pra busca do Google Maps.",
     placeholder: "Rua X, 123 — Bauru/SP",
     exemplo: "Tio Panda restaurante",
+  },
+  {
+    chave: "cidade",
+    label: "Cidade",
+    hint: "Vai no código Pix da gorjeta — o padrão do Banco Central exige, e corta em 15 letras sem acento.",
+    placeholder: "Bauru",
+    exemplo: "Bauru",
   },
 ];
 

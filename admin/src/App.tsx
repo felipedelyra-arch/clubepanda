@@ -11,6 +11,7 @@ import { Menu } from "./pages/Menu";
 import { Rewards } from "./pages/Rewards";
 import { Plans } from "./pages/Plans";
 import { Members } from "./pages/Members";
+import { Team } from "./pages/Team";
 import { Payments } from "./pages/Payments";
 import { Notifications } from "./pages/Notifications";
 import { Settings } from "./pages/Settings";
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/premiacoes" element={<Rewards />} />
           <Route path="/planos" element={<Plans />} />
           <Route path="/membros" element={<Members />} />
+          <Route path="/equipe" element={<Team />} />
           <Route path="/pagamentos" element={<Payments />} />
           <Route path="/notificacoes" element={<Notifications />} />
           <Route path="/configuracoes" element={<Settings />} />

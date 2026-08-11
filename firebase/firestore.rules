@@ -94,6 +94,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- funcionarios ----
+    // Equipe que pode receber gorjeta. Sócio logado lê pra escolher quem o
+    // atendeu; só admin cadastra e edita.
+    //
+    // ⚠️ A chave Pix daqui fica visível pra qualquer cliente logado — é o que
+    // faz a gorjeta funcionar. Por isso o painel exige chave aleatória: chave
+    // que seja CPF ou telefone estaria publicando dado pessoal do funcionário
+    // pra clientela inteira.
+    match /funcionarios/{funcionarioId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // ---- redemptions ----
     // Dono lê os próprios resgates. Admin lê todos. Escrita só backend
     // (resgate baixa estoque dentro da janela; validação marca como usado).

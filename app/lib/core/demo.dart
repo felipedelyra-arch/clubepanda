@@ -351,8 +351,29 @@ final demoRedemptionsProvider =
     NotifierProvider<DemoRedemptionsNotifier, List<Redemption>>(
         DemoRedemptionsNotifier.new);
 
+/// Equipe fictícia da demonstração. As chaves são aleatórias e inventadas: no
+/// restaurante de verdade cada pessoa cadastra a própria chave pelo painel.
+const _demoFuncionarios = [
+  Funcionario(
+      id: 'f_lucas',
+      nome: 'Lucas Ferreira',
+      funcao: 'Garçom',
+      chavePix: '7b3e1c9a-4d52-4f8b-9c21-6a0e5d7f2b18'),
+  Funcionario(
+      id: 'f_marina',
+      nome: 'Marina Alves',
+      funcao: 'Garçonete',
+      chavePix: '2f9d4a71-8c36-4e05-b7da-1e63c9f0a4b2'),
+  Funcionario(
+      id: 'f_rafael',
+      nome: 'Rafael Tanaka',
+      funcao: 'Sushiman',
+      chavePix: 'c14b8e60-3a77-4d92-8f15-5b2e7c0d9a63'),
+];
+
 /// Overrides do Riverpod pro modo demo — substituem os streams do Firebase.
 final demoOverrides = [
+  funcionariosProvider.overrideWith((_) => Stream.value(_demoFuncionarios)),
   authStateProvider.overrideWith((_) => Stream<User?>.value(null)),
   currentUserProvider.overrideWith((_) => Stream.value(_demoUser)),
   promotionsProvider.overrideWith((_) => Stream.value(_demoPromotions)),

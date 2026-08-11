@@ -92,6 +92,23 @@ export interface Subscription {
  * Doc `config/restaurante`. Espelha `app/lib/core/restaurante.dart` — a ideia é
  * o app passar a ler daqui em vez das constantes compiladas.
  */
+/**
+ * Alguém da equipe habilitado a receber gorjeta por Pix (coleção
+ * `funcionarios`). O cliente escolhe o nome no app depois de resgatar um
+ * prêmio, e o dinheiro vai direto pra chave — o restaurante não intermedeia.
+ */
+export interface Funcionario {
+  id: string;
+  nome: string;
+  /** Chave Pix de destino. Deve ser chave aleatória: fica visível pros sócios. */
+  chavePix: string;
+  /** "Garçom", "Sushiman"… ajuda o cliente a reconhecer quem o atendeu. */
+  funcao?: string;
+  /** Desligado some da lista do app sem apagar o cadastro. */
+  ativo: boolean;
+  criadoEm?: Date;
+}
+
 export interface Restaurante {
   nome: string;
   /** Telefone pra ligação, só dígitos com DDI: 5514... */
@@ -100,6 +117,9 @@ export interface Restaurante {
   whatsapp: string;
   /** Endereço usado na busca do Google Maps. */
   endereco: string;
+  /** Cidade do recebedor no código Pix da gorjeta (campo exigido pelo padrão
+   *  do Banco Central, no máximo 15 caracteres sem acento). */
+  cidade: string;
   politicaPrivacidadeUrl: string;
   termosUrl: string;
   playStoreUrl: string;

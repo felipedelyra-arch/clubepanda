@@ -16,6 +16,7 @@ import '../../core/widgets/entrada.dart';
 import '../../core/widgets/skeleton.dart';
 import '../../core/widgets/app_image.dart';
 import '../../core/models/models.dart';
+import 'gorjeta_sheet.dart';
 
 IconData _iconeTipo(String tipo) {
   switch (tipo) {
@@ -27,6 +28,50 @@ IconData _iconeTipo(String tipo) {
       return Icons.icecream_outlined;
     default:
       return Icons.confirmation_number_outlined;
+  }
+}
+
+/// Convite pra deixar gorjeta, mostrado logo abaixo do QR do prêmio.
+///
+/// Some sozinho quando não há ninguém cadastrado com chave Pix: botão que abre
+/// uma lista vazia é pior que botão nenhum.
+class _ConviteGorjeta extends ConsumerWidget {
+  const _ConviteGorjeta();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final equipe = ref.watch(funcionariosProvider).value ?? const [];
+    if (equipe.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: PandaRadius.bmd,
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.volunteer_activism_outlined,
+              color: PandaColors.laranja),
+          const SizedBox(height: 8),
+          Text('Gostou do atendimento?',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          const Text(
+            'Deixe uma gorjeta por Pix direto pra quem te atendeu.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: 13, height: 1.4, color: PandaColors.cinzaTexto),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: () => mostrarGorjeta(context),
+            child: const Text('Deixar gorjeta'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -432,6 +477,10 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
                       fontWeight: FontWeight.w700)),
             ),
             const SizedBox(height: 24),
+            // Gorjeta: o prêmio acabou de ser entregue, é o instante em que o
+            // cliente está com o celular na mão e lembra de quem o atendeu.
+            const _ConviteGorjeta(),
+            const SizedBox(height: 12),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Fechar'),
