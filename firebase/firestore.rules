@@ -54,38 +54,43 @@ service cloud.firestore {
     }
 
     // ---- config ----
-    // Config pública do app (ex.: minBuild pra update obrigatório). Só admin escreve.
+    // ATENÇÃO: esta é a ÚNICA coleção de leitura pública, e tem que continuar
+    // assim. O VersionGate (app/lib/core/version_gate.dart) lê config/app antes
+    // de qualquer login pra decidir se bloqueia a versão velha; exigir sessão
+    // aqui deixaria o app impossível de destravar. Só admin escreve.
     match /config/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     // ---- plans ----
-    // Leitura pública (vitrine de planos). Escrita só admin/backend.
+    // Vitrine de planos. Exige sessão: o router (app/lib/router/app_router.dart)
+    // manda todo mundo sem sessão pro /login, então nenhuma tela lê isso
+    // deslogado. Escrita só admin/backend.
     match /plans/{planId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     // ---- promotions ----
-    // Leitura pública. Escrita só admin.
+    // Só logado lê (ofertas são o produto do clube). Escrita só admin.
     match /promotions/{promoId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     // ---- rewards ----
-    // Leitura pública. Escrita só admin.
+    // Só logado lê. Escrita só admin.
     match /rewards/{rewardId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 
     // ---- menu ----
-    // Cardápio: um doc por prato, categoria é campo. Leitura pública (o app
-    // mostra sem login), escrita só admin.
+    // Cardápio: um doc por prato, categoria é campo. Só logado lê (a rota
+    // /cardapio também está atrás da guarda de auth), escrita só admin.
     match /menu/{itemId} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
 

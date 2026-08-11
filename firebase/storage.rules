@@ -31,9 +31,10 @@ service firebase.storage {
       allow write: if isAdmin() && isImage();
     }
 
-    // Foto de perfil: dono lê/escreve a própria; leitura pública opcional.
+    // Foto de perfil: dono escreve a própria, e só quem tem sessão lê. Sem
+    // leitura pública — foto de sócio não é material de vitrine.
     match /users/{userId}/{fileName} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == userId && isImage();
     }
 
