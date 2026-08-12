@@ -20,6 +20,7 @@ import '../../core/theme/dimens.dart';
 import '../../core/widgets/state_views.dart';
 import '../../core/widgets/entrada.dart';
 import '../../core/models/models.dart';
+import '../auth/auth_perfil.dart';
 
 /// Versão instalada, pra mostrar no rodapé das configurações. Se a
 /// plataforma não souber informar, o rodapé simplesmente não mostra nada.
@@ -131,7 +132,7 @@ class SettingsScreen extends ConsumerWidget {
                         context.go('/login');
                         return;
                       }
-                      ref.read(firebaseAuthProvider).signOut();
+                      sair(ref);
                     },
                     icon: const Icon(Icons.logout, size: 18),
                     label: const Text('Sair'),
@@ -763,7 +764,7 @@ Future<void> _excluirConta(BuildContext context, WidgetRef ref) async {
   }
   try {
     await ref.read(functionsProvider).httpsCallable('deleteAccount').call();
-    await ref.read(firebaseAuthProvider).signOut();
+    await sair(ref);
     if (context.mounted) {
       // rootNavigator: o loading foi empilhado lá, não no Navigator da shell.
       Navigator.of(context, rootNavigator: true).pop(); // fecha loading

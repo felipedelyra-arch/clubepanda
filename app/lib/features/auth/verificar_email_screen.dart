@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/services.dart';
 import '../../core/theme/colors.dart';
+import 'auth_perfil.dart';
 
 /// Porta de entrada de quem se cadastrou com e-mail e senha e ainda não
 /// confirmou o endereço.
@@ -195,7 +196,7 @@ class _VerificarEmailScreenState extends ConsumerState<VerificarEmailScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => ref.read(firebaseAuthProvider).signOut(),
+                  onPressed: () => sair(ref),
                   style: TextButton.styleFrom(
                       foregroundColor: PandaColors.cinzaTexto),
                   child: const Text('Sair e usar outro e-mail'),

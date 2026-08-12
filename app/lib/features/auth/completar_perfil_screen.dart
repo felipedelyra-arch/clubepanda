@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/services/services.dart';
 import '../../core/theme/colors.dart';
+import 'auth_perfil.dart';
 
 /// Completa o cadastro de quem entrou pelo Google.
 ///
@@ -216,7 +217,7 @@ class _CompletarPerfilScreenState
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => ref.read(firebaseAuthProvider).signOut(),
+                  onPressed: () => sair(ref),
                   style: TextButton.styleFrom(
                       foregroundColor: PandaColors.cinzaTexto),
                   child: const Text('Sair'),
