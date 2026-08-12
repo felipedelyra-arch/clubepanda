@@ -30,6 +30,11 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   bool _loading = false;
   String? _erro;
 
+  // Mesma paleta escura da tela de login, pro botão do Google ficar igual nas
+  // duas. Fixa de propósito: não segue o tema claro/escuro do app.
+  static const _cardEscuro = Color(0xFF211C16);
+  static const _bordaEscura = Color(0x12FFFFFF);
+
   @override
   void dispose() {
     _nome.dispose();
@@ -285,13 +290,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: 16),
                 // Atalho do Google também aqui: quem chega em "Criar conta"
                 // pelo caminho longo do formulário também quer o de um toque.
+                // Mesmas cores da tela de login (variante escura aprovada do
+                // Google). O branco de antes destoava do resto da tela.
                 BotaoSocial(
                   onTap: _loading ? null : _cadastrarComGoogle,
                   icone: const GoogleG(),
                   texto: 'Continuar com Google',
-                  corFundo: PandaColors.branco,
-                  corBorda: PandaColors.hairline,
-                  corTexto: PandaColors.preto,
+                  corFundo: _cardEscuro,
+                  corBorda: _bordaEscura,
                 ),
                 const SizedBox(height: 8),
                 Center(

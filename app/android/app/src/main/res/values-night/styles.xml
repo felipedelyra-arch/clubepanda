@@ -13,6 +13,9 @@
 
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <!-- A abertura é laranja também no modo escuro: a marca não muda de cor
+             porque o sistema está no escuro. Era este `?android:colorBackground`
+             que pintava tudo de preto. -->
+        <item name="android:windowBackground">@color/panda_laranja</item>
     </style>
 </resources>

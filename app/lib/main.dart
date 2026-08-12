@@ -19,6 +19,7 @@ import 'core/demo.dart';
 import 'core/app_prefs.dart';
 import 'core/ui_prefs.dart';
 import 'core/widgets/phone_frame.dart';
+import 'core/widgets/splash_gate.dart';
 import 'router/app_router.dart';
 
 Future<void> main() async {
@@ -105,8 +106,12 @@ class ClubePandaApp extends ConsumerWidget {
         return MediaQuery(
           data: mq.copyWith(textScaler: TextScaler.linear(textScale)),
           child: PhoneFrame(
-            child: ConnectivityGate(
-              child: VersionGate(child: child ?? const SizedBox()),
+            // SplashGate por fora dos outros portões: o banner de offline e a
+            // trava de versão não devem piscar por baixo da abertura.
+            child: SplashGate(
+              child: ConnectivityGate(
+                child: VersionGate(child: child ?? const SizedBox()),
+              ),
             ),
           ),
         );
