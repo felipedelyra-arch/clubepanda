@@ -8,59 +8,91 @@ o resto é conta, chave ou arquivo que só o dono do restaurante consegue criar.
 
 ---
 
-## 1. Firebase de verdade (bloqueia todo o resto)
+## 1. Firebase de verdade ✅ FEITO
 
-Hoje `app/lib/firebase_options.dart` é um **placeholder** com chaves fictícias, e não
-existem `google-services.json` (Android) nem `GoogleService-Info.plist` (iOS).
+`flutterfire configure --project=pandavip` já rodou. `firebase_options.dart` tem as
+chaves reais e o `google-services.json` existe, então o `android/app/build.gradle.kts`
+liga sozinho os plugins do Google Services e do Crashlytics. Authentication, Firestore
+e Cloud Messaging estão habilitados no console.
 
-```bash
-dart pub global activate flutterfire_cli
-cd app
-flutterfire configure --project=pandavip
-```
+**Storage não** — o bucket só pode ser criado depois do Blaze (ver item 2).
 
-Isso reescreve `firebase_options.dart` com as chaves reais e cria os dois arquivos
-nativos. O `android/app/build.gradle.kts` **liga sozinho** os plugins do Google
-Services e do Crashlytics assim que o `google-services.json` aparecer. ✅
+### Chaves de API restritas ✅
 
-No console do Firebase, ainda: habilitar **Authentication** (e-mail/senha, Google,
-Apple), **Firestore**, **Storage** e **Cloud Messaging**.
+São **três**, uma por plataforma (`app/lib/firebase_options.dart`). Restringidas em
+https://console.cloud.google.com/apis/credentials?project=pandavip:
 
-## 2. Backend no ar
+- **Android** — pacote `com.tiopanda.pandavip` com as **duas** SHA-1 (release e
+  debug). Só a de release quebraria o `flutter run` no celular.
+- **Web** — 7 sites, todos terminando em `/*`. Inclui
+  `https://pandavip.firebaseapp.com/*`, que é por onde passa o redirecionamento do
+  login Google/Apple: sem ela o login social falha sem erro claro. Mais `localhost` e
+  `127.0.0.1` nas portas 5173 e 8910. **O console recusa curinga em porta** — por isso
+  `admin/vite.config.ts` fixa a 5173 com `strictPort`.
+- **iOS** — ❌ ainda falta: Aplicativos iOS → `com.tiopanda.pandavip`.
+
+> Quando entrar domínio próprio, o domínio precisa ser adicionado em **duas listas
+> diferentes**: a chave Web acima **e** Authentication → Settings → Domínios
+> autorizados. Só a primeira não basta.
+
+## 2. Backend no ar — ⚠️ bloqueado no Blaze
+
+Regras já publicadas ✅ (`firestore.rules`, incluindo a coleção `funcionarios`).
+Falta o resto, e nada disso sai sem plano Blaze:
 
 ```bash
 cd firebase
-firebase login && firebase use --add
-firebase deploy --only firestore:rules,firestore:indexes,storage,functions
+firebase deploy --only functions,storage
 ```
 
+- **As 7 Functions não estão no ar.** Em produção isso significa que **resgatar
+  prêmio não funciona** (`redeemReward`), nem apagar conta, assinar, cancelar ou
+  indicar. O app hoje faz login, mostra oferta, cardápio e carteirinha — só.
+- `storage.rules` está escrito e pronto, mas o deploy falha com
+  `Firebase Storage has not been set up on project 'pandavip'`: o bucket só existe
+  depois do Blaze. **A região do bucket é definitiva** — escolher
+  `southamerica-east1`, igual às Functions.
 - A function `publicarPromocoesAgendadas` é agendada — o deploy vai pedir o
-  **Cloud Scheduler** habilitado no projeto (exige plano Blaze).
+  **Cloud Scheduler** habilitado.
 - Segredos das Functions: `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`.
-- Criar o primeiro admin pelo script em `firebase/README.md`. Daí em diante é pelo
-  painel (Configurações → Quem entra no painel).
+- Antes de ligar o Blaze, criar alerta de orçamento de R$ 20. Ele **avisa, não
+  corta** — não existe teto de gasto no Google Cloud. O que limita de verdade é o
+  `maxInstances: 10` em `firebase/functions/src/index.ts`.
 
 ## 3. Preencher os dados do restaurante **pelo painel**
 
 Configurações → Dados do restaurante. O app lê o doc `config/restaurante` em tempo
 real ✅ — trocar o telefone no painel muda o app na hora, sem publicar versão nova.
 
-Falta preencher com o que é real: telefone, WhatsApp, endereço, política de
-privacidade, termos, e os links das duas lojas (depois que o app for publicado).
+Falta preencher com o que é real: telefone, WhatsApp, endereço, **cidade** (o BR Code
+do Pix da gorjeta exige), política de privacidade, termos, e os links das duas lojas
+(depois que o app for publicado).
 
-**A política de privacidade precisa estar numa URL pública** — as duas lojas exigem, e
-a ficha da loja pede o mesmo link.
+### Política de privacidade — escrita, ⚠️ não publicada
+
+Está em `app/web/privacidade.html`. O Flutter copia a pasta `web/` inteira pro build,
+então ela sai em `https://pandavip-app.web.app/privacidade.html` e sobrevive a toda
+recompilação.
+
+**Não subiu de propósito**: faltam razão social, CNPJ, endereço e e-mail do
+restaurante, que estão como `[PLACEHOLDER]` com um aviso no topo do arquivo. Política
+no ar com colchete é pior que política nenhuma — é a primeira coisa que o revisor da
+Play abre.
+
+### O que só o dono resolve, sem custo
+
+- Os **3 benefícios reais** do plano de R$ 4,90 (o que está lá é texto de exemplo).
+- As **chaves Pix da equipe**, cadastradas em Equipe (`/equipe`). Têm que ser chave
+  **aleatória**: o sócio que resgata enxerga a chave na tela.
+- Os dados legais da política acima.
 
 ---
 
 ## 4. Android — o que já está pronto e o que falta
 
-> ⚠️ **Esta máquina ainda não tem o Android SDK** (`flutter doctor` → *Unable to locate
-> Android SDK*). Sem ele não sai APK nem AAB. Instale o
-> [Android Studio](https://developer.android.com/studio) e deixe ele baixar o SDK na
-> primeira abertura. Enquanto isso, as mudanças de Gradle e de manifesto abaixo estão
-> escritas mas **nunca foram compiladas**.
-
+> O Android SDK está instalado nesta máquina, no "caminho magro" (sem Android Studio):
+> JDK 17 Temurin em `~\Android\jdk`, SDK em `~\Android\Sdk`. `flutter doctor` dá
+> **Android toolchain ✓**.
 
 | Item | Status |
 |---|---|
@@ -70,19 +102,34 @@ a ficha da loja pede o mesmo link.
 | Permissões `INTERNET` e `POST_NOTIFICATIONS` | ✅ |
 | `<queries>` de `tel:`/`https:` (senão os botões de contato não abrem no Android 11+) | ✅ |
 | Símbolos nativos no bundle (`SYMBOL_TABLE`) | ✅ |
-| **Keystore de upload** | ❌ só você |
+| **Keystore de upload** | ✅ feito |
 
-Sem keystore o release sai assinado com a chave de **debug** e a Play Store recusa.
+### Keystore ✅
 
-```bash
-keytool -genkey -v -keystore %USERPROFILE%\pandavip-upload.jks \
-  -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+`C:\Users\Usuario\pandavip-upload.jks`, PKCS12, alias `upload`, válido até
+**28/12/2053**. Senha em `app/android/key.properties` (fora do git, junto com o
+`.jks`).
+
+Verificado com `gradlew :app:signingReport`: `Variant: release` usa
+`Config: release` apontando pro `.jks` — antes o release saía assinado com a chave de
+**debug**, que a Play recusa.
+
+**SHA-1 de release**, a que vai nas restrições de chave de API e no App Check:
+
+```
+2C:2E:E4:1E:D9:13:06:D8:AE:1D:74:1A:17:35:B5:E7:13:8A:9C:25
 ```
 
-Depois copie `app/android/key.properties.example` para `app/android/key.properties` e
-preencha. O Gradle passa a assinar de verdade sozinho. **Guarde o `.jks` e as senhas
-com a sua vida**: perder essa chave significa nunca mais poder atualizar o app
-publicado. Nenhum dos dois entra no git.
+> ⚠️ **Guarde o `.jks` e a senha com a sua vida, fora desta máquina.** Perder essa
+> chave depois do app publicado significa nunca mais poder atualizá-lo — nem o Google
+> resolve. É o único item deste checklist sem conserto.
+
+Pra gerar de novo (só antes de publicar; depois disso a chave é definitiva):
+
+```bash
+keytool -genkeypair -v -keystore %USERPROFILE%\pandavip-upload.jks \
+  -storetype PKCS12 -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+```
 
 Gerar o pacote de envio:
 
@@ -109,6 +156,31 @@ Não dá pra compilar iOS no Windows. É Mac emprestado/alugado ou serviço de b
 na nuvem.
 
 > EAS (`eas init`) é da Expo e só builda React Native — não serve pra Flutter.
+
+## 5b. App Check — SDK instalado, imposição desligada
+
+O App Check prova ao Firebase que a chamada veio do app de verdade, e não de um script
+com a chave de API copiada do APK.
+
+- **App Flutter ✅** — `firebase_app_check` ligado em `app/lib/main.dart`, logo depois
+  do `Firebase.initializeApp`: `AndroidPlayIntegrityProvider` /
+  `AppleAppAttestProvider` em release, provedores de depuração fora dele. **Web fica
+  de fora** (`if (!kIsWeb)`) porque lá o provedor é reCAPTCHA e a chave de site ainda
+  não existe — chamar `activate` sem ela estoura antes do `runApp` e deixa a página
+  branca.
+- **Painel ❌** — ainda sem SDK. Usa o pacote `firebase` inteiro, então é só importar
+  `firebase/app-check`; falta criar a chave reCAPTCHA no console (grátis, não exige
+  Blaze).
+
+> ⚠️ **Não ative a imposição ainda.** Com ela ligada, todo cliente sem SDK de App
+> Check é bloqueado — inclusive qualquer APK compilado antes desta mudança.
+
+Ordem certa: SDK instalado (feito no app) → tokens de depuração registrados no console
+→ app publicado em teste interno → olhar as métricas de "solicitações verificadas" →
+só então impor, **um produto por vez** (Firestore, depois Storage, depois Functions).
+
+Decisões já tomadas no console: TTL **1 hora**, `PLAY_RECOGNIZED` marcado, `LICENSED`
+desmarcado, integridade do dispositivo em "Não verificar explicitamente".
 
 ## 6. Contas e fichas das lojas
 
