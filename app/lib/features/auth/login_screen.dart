@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/services/services.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
+import 'auth_perfil.dart';
+import 'botao_social.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -84,18 +86,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _entrarGoogle() => _entrarComProvedor(() async {
-        await ref
-            .read(firebaseAuthProvider)
-            .signInWithProvider(GoogleAuthProvider());
-      });
+  Future<void> _entrarGoogle() => _entrarComProvedor(() => entrarComGoogle(ref));
 
-  Future<void> _entrarApple() => _entrarComProvedor(() async {
-        final provider = OAuthProvider('apple.com')
-          ..addScope('email')
-          ..addScope('name');
-        await ref.read(firebaseAuthProvider).signInWithProvider(provider);
-      });
+  Future<void> _entrarApple() => _entrarComProvedor(() => entrarComApple(ref));
 
   Future<void> _recuperarSenha() async {
     if (_email.text.trim().isEmpty) {
@@ -385,19 +378,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 20),
                     _divisorOu(),
                     const SizedBox(height: 16),
-                    _botaoSocial(
+                    BotaoSocial(
                       onTap: _loading ? null : _entrarGoogle,
-                      icone: Icons.g_mobiledata_rounded,
+                      icone: const GoogleG(),
                       texto: 'Continuar com Google',
+                      corFundo: _card,
+                      corBorda: _borda,
                     ),
                     // Apple exige o botão em plataformas Apple (e web Safari).
                     if (defaultTargetPlatform == TargetPlatform.iOS ||
                         defaultTargetPlatform == TargetPlatform.macOS) ...[
                       const SizedBox(height: 12),
-                      _botaoSocial(
+                      BotaoSocial(
                         onTap: _loading ? null : _entrarApple,
-                        icone: Icons.apple_rounded,
+                        icone: const Icon(Icons.apple_rounded,
+                            color: Colors.white, size: 24),
                         texto: 'Continuar com Apple',
+                        corFundo: _card,
+                        corBorda: _borda,
                       ),
                     ],
 
@@ -489,40 +487,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         Expanded(child: Container(height: 1, color: _borda)),
       ],
-    );
-  }
-
-  Widget _botaoSocial({
-    required VoidCallback? onTap,
-    required IconData icone,
-    required String texto,
-  }) {
-    return Material(
-      color: _card,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Ink(
-          height: 54,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _borda),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icone, color: Colors.white, size: 24),
-              const SizedBox(width: 10),
-              Text(texto,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

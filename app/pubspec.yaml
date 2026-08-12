@@ -54,6 +54,7 @@ dependencies:
   firebase_crashlytics: ^5.2.6
   package_info_plus: ^10.2.1
   firebase_app_check: ^0.4.6
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
   flutter_test:
@@ -99,6 +100,7 @@ flutter:
   assets:
     - assets/logo/
     - assets/images/
+    - assets/brand/
 
   # Fontes empacotadas localmente (variáveis, cobrem todos os pesos).
   # Evita o download em runtime do google_fonts — texto pinta na hora, offline.

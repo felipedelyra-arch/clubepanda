@@ -9,6 +9,9 @@ import '../core/demo.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/signup_screen.dart';
+import '../features/auth/auth_perfil.dart';
+import '../features/auth/verificar_email_screen.dart';
+import '../features/auth/completar_perfil_screen.dart';
 import '../features/shell/main_shell.dart';
 import '../features/home/home_screen.dart';
 import '../features/rewards/rewards_screen.dart';
@@ -54,6 +57,33 @@ final routerProvider = Provider<GoRouter>((ref) {
       final signedIn = authState.value != null;
 
       if (!signedIn) return loggingIn ? null : '/login';
+
+      // Ordem importa: primeiro confirma quem é, depois pede o que falta.
+
+      // 1) E-mail não confirmado (só quem entrou por e-mail/senha). Prende
+      // aqui até o link ser aberto — é o que impede cadastro com e-mail de
+      // outra pessoa ou inventado.
+      const rotaVerificar = '/verificar-email';
+      if (ref.read(precisaVerificarEmailProvider)) {
+        return state.matchedLocation == rotaVerificar ? null : rotaVerificar;
+      }
+      if (state.matchedLocation == rotaVerificar) return '/home';
+
+      // 2) Perfil sem telefone ou nascimento — o caso de quem entrou pelo
+      // Google, que não informa nenhum dos dois.
+      //
+      // `null` = o doc ainda não chegou do Firestore. Não desvia: tratar
+      // carregamento como "incompleto" jogaria todo mundo no formulário a
+      // cada abertura do app.
+      const rotaCompletar = '/completar-perfil';
+      final completo = ref.read(perfilCompletoProvider);
+      if (completo == false) {
+        return state.matchedLocation == rotaCompletar ? null : rotaCompletar;
+      }
+      if (state.matchedLocation == rotaCompletar && completo == true) {
+        return '/home';
+      }
+
       if (loggingIn) return '/home';
       return null;
     },
@@ -61,6 +91,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, _) => const SignupScreen()),
+      GoRoute(
+          path: '/verificar-email',
+          builder: (_, _) => const VerificarEmailScreen()),
+      GoRoute(
+          path: '/completar-perfil',
+          builder: (_, _) => const CompletarPerfilScreen()),
       // Telas em foco (sem bottom nav), com botão de voltar.
       GoRoute(
           path: '/carteirinha',
@@ -85,8 +121,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 });
 
 /// Refaz o redirect quando o estado de auth muda.
+///
+/// Ouve também o doc do perfil: sem isso, salvar telefone e nascimento em
+/// `/completar-perfil` não faria o router reavaliar, e o sócio ficaria preso no
+/// formulário que acabou de preencher.
 class _AuthListenable extends ChangeNotifier {
   _AuthListenable(Ref ref) {
     ref.listen(authStateProvider, (_, _) => notifyListeners());
+    if (!kDemo) {
+      ref.listen(currentUserProvider, (_, _) => notifyListeners());
+    }
   }
 }

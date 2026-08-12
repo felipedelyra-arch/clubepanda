@@ -9,6 +9,8 @@ import '../../core/services/services.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/panda_logo.dart';
+import 'auth_perfil.dart';
+import 'botao_social.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -51,6 +53,31 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     if (escolhida != null) setState(() => _nascimento = escolhida);
   }
 
+  /// Cadastro pelo Google. Não passa por aqui nada do formulário: o que falta
+  /// (telefone e nascimento) é pedido depois, em /completar-perfil, pra não
+  /// travar o atalho de um toque com um formulário.
+  Future<void> _cadastrarComGoogle() async {
+    if (kDemo) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login social desativado no modo demo')),
+      );
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _erro = null;
+    });
+    try {
+      await entrarComGoogle(ref);
+    } on FirebaseAuthException catch (e) {
+      setState(() => _erro = _mensagemErro(e.code));
+    } catch (_) {
+      setState(() => _erro = 'Não foi possível entrar com o Google.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _cadastrar() async {
     if (!_formKey.currentState!.validate()) return;
     // Demo: simula cadastro e entra direto.
@@ -69,6 +96,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 password: _senha.text,
               );
       await cred.user?.updateDisplayName(_nome.text.trim());
+
+      // Link de confirmação. O router segura em /verificar-email enquanto o
+      // e-mail não for confirmado — é o que impede cadastro com endereço
+      // inventado ou de outra pessoa.
+      try {
+        await cred.user?.sendEmailVerification();
+      } catch (_) {
+        // Limite de envio do Firebase: a tela de verificação tem "Reenviar".
+      }
+
       // Doc de perfil também é criado no backend (onAuthUserCreate);
       // aqui garante os campos extras informados no cadastro.
       await ref.read(firestoreProvider).doc('users/${cred.user!.uid}').set({
@@ -229,6 +266,32 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                               strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Criar conta'),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Expanded(
+                        child: Divider(color: PandaColors.hairline)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('ou',
+                          style: TextStyle(
+                              color: PandaColors.cinzaTexto, fontSize: 13)),
+                    ),
+                    const Expanded(
+                        child: Divider(color: PandaColors.hairline)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Atalho do Google também aqui: quem chega em "Criar conta"
+                // pelo caminho longo do formulário também quer o de um toque.
+                BotaoSocial(
+                  onTap: _loading ? null : _cadastrarComGoogle,
+                  icone: const GoogleG(),
+                  texto: 'Continuar com Google',
+                  corFundo: PandaColors.branco,
+                  corBorda: PandaColors.hairline,
+                  corTexto: PandaColors.preto,
                 ),
                 const SizedBox(height: 8),
                 Center(
