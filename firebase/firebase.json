@@ -23,6 +23,10 @@
       "rewrites": [{ "source": "**", "destination": "/index.html" }],
       "headers": [
         {
+          "source": "**/*.html",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        },
+        {
           "source": "/assets/**",
           "headers": [
             {
@@ -37,7 +41,13 @@
       "target": "app",
       "public": "hosting/app",
       "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-      "rewrites": [{ "source": "**", "destination": "/index.html" }]
+      "rewrites": [{ "source": "**", "destination": "/index.html" }],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+        }
+      ]
     }
   ],
   "emulators": {
