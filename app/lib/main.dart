@@ -1,9 +1,10 @@
 import 'dart:ui';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -32,6 +33,23 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // App Check: prova ao Firebase que a chamada veio deste app, e não de um
+    // script com a chave de API copiada do APK. Enquanto a imposição estiver
+    // desligada no console, o token é enviado e ignorado — instalar agora não
+    // derruba ninguém, e é pré-requisito pra poder impor depois.
+    //
+    // Web fica de fora de propósito: lá o provedor é reCAPTCHA, que exige uma
+    // chave de site que ainda não foi criada. Sem ela, `activate` estoura.
+    if (!kIsWeb) {
+      await FirebaseAppCheck.instance.activate(
+        providerAndroid: kReleaseMode
+            ? const AndroidPlayIntegrityProvider()
+            : const AndroidDebugProvider(),
+        providerApple: kReleaseMode
+            ? const AppleAppAttestProvider()
+            : const AppleDebugProvider(),
+      );
+    }
     // Crashlytics: captura erros de framework e assíncronos não tratados.
     // Não existe no web (o pacote só tem Android/iOS) — tocar na instância lá
     // estoura antes do runApp e deixa a página em branco.
