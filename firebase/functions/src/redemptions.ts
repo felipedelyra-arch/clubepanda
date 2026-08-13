@@ -69,6 +69,10 @@ export const redeemReward = onCall(async (req) => {
       userId: uid,
       rewardId,
       rewardTitulo: reward.titulo ?? "",
+      // Congela o valor do prêmio no momento do resgate. Sem isso, o
+      // "você já economizou" do app seguiria o preço atual do prêmio — mudar
+      // o cardápio reescreveria o passado do sócio.
+      valor: Number(reward.valor ?? 0),
       codigo,
       status: "disponivel",
       criadoEm: FieldValue.serverTimestamp(),

@@ -24,15 +24,27 @@ service cloud.firestore {
 
     // ---- users ----
     // Cada usuário lê/escreve só os próprios dados. Admin lê todos.
-    // Campo sensível (role) só o backend altera.
+    //
+    // A lista abaixo é branca, não preta: só estes campos saem do app. Antes a
+    // regra barrava apenas `role`, e todo o resto do documento ficava aberto —
+    // o que deixava o próprio dono reescrever `stripeCustomerId` (que vira o
+    // `customer` do checkout em subscriptions.ts) e `codigoSocio` (que é a
+    // identidade lida no PDV). Campo que decide dinheiro ou identidade só entra
+    // por Cloud Function, que roda com Admin SDK e ignora estas regras.
+    function camposDoCliente() {
+      return [
+        'uid', 'nome', 'email', 'telefone', 'endereco',
+        'nascimento', 'fotoUrl', 'fcmToken', 'criadoEm'
+      ];
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isOwner(userId)
-                    // usuário não pode se auto-conceder role
-                    && !('role' in request.resource.data);
+                    && request.resource.data.keys().hasOnly(camposDoCliente());
       allow update: if isOwner(userId)
-                    // usuário não pode mexer no próprio role
-                    && request.resource.data.get('role', '') == resource.data.get('role', '');
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(camposDoCliente());
       allow delete: if isAdmin();
 
       // ---- users/{userId}/notifications ----

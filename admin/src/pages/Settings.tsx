@@ -343,6 +343,11 @@ export function Settings() {
         </Card>
       </section>
 
+      <section>
+        <SectionTitle>Carteirinhas dos sócios</SectionTitle>
+        <CodigosSocio />
+      </section>
+
       {/* Barra de não salvo: aparece só quando há o que salvar, e conta quantos
           campos mudaram. Sem ela, o botão de salvar ficava perdido no meio da
           página e dava pra sair sem gravar. */}
@@ -375,6 +380,69 @@ export function Settings() {
         confirmLabel="Tirar acesso"
       />
     </div>
+  );
+}
+
+/**
+ * Gera o código de carteirinha de quem se cadastrou antes dele existir.
+ *
+ * Conta nova já nasce com código (`functions/src/users.ts`). Quem entrou antes
+ * fica sem, e a carteirinha cai no identificador longo — que o atendente não
+ * digita quando o leitor de QR falha. Este botão é o conserto, e some da tela
+ * quando não há mais ninguém pendente.
+ */
+function CodigosSocio() {
+  const { data: users, loading } = useCollection<AppUser>("users");
+  const [rodando, setRodando] = useState(false);
+
+  const pendentes = useMemo(() => users.filter((u) => !u.codigoSocio).length, [users]);
+
+  async function gerar() {
+    if (demoBlock("Códigos não gerados")) return;
+    setRodando(true);
+    try {
+      const res = await httpsCallable(functions, "backfillCodigosSocio")({});
+      const { gerados, falhas } = res.data as { gerados: number; falhas: string[] };
+      if (falhas.length) {
+        toast.warning(`${gerados} código(s) gerado(s), ${falhas.length} falhou/falharam.`);
+      } else {
+        toast.success(
+          gerados === 0 ? "Todo mundo já tinha código." : `${gerados} carteirinha(s) prontas.`
+        );
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRodando(false);
+    }
+  }
+
+  if (loading) return <Spinner />;
+
+  return (
+    <Card>
+      <p className="mb-4 text-sm text-tinta-2">
+        O código curto da carteirinha é o que o atendente lê (ou digita) pra
+        identificar o sócio no salão. Conta nova já nasce com ele.
+        {pendentes > 0 ? (
+          <>
+            {" "}
+            <strong className="font-semibold text-tinta">
+              {pendentes === 1
+                ? "1 sócio ainda está sem código"
+                : `${pendentes} sócios ainda estão sem código`}
+            </strong>{" "}
+            — são os que se cadastraram antes.
+          </>
+        ) : (
+          " Ninguém está pendente."
+        )}
+      </p>
+
+      <Button onClick={gerar} disabled={rodando || pendentes === 0}>
+        {rodando ? "Gerando…" : "Gerar códigos que faltam"}
+      </Button>
+    </Card>
   );
 }
 

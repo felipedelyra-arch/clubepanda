@@ -39,6 +39,19 @@ export const deleteAccount = onCall(async (req) => {
   };
   await apagarEmLote(db.collection("subscriptions").where("userId", "==", uid));
   await apagarEmLote(db.collection("redemptions").where("userId", "==", uid));
+
+  // Índices reversos código -> uid. Saem ANTES do perfil, porque é dele que os
+  // códigos vêm. Deixados pra trás, continuam resolvendo pra um uid que não
+  // existe mais: `acharUsuario` (lib/consumo.ts) devolveria esse uid e o
+  // consumo do salão viraria conta de um dono que já apagou a conta. E, pra
+  // LGPD, o índice guardaria um identificador vinculável depois do "apague
+  // meus dados".
+  const perfil = await db.doc(`users/${uid}`).get();
+  const codigoSocio = perfil.get("codigoSocio") as string | undefined;
+  const codigoIndicacao = perfil.get("codigoIndicacao") as string | undefined;
+  if (codigoSocio) await db.doc(`socioCodes/${codigoSocio}`).delete();
+  if (codigoIndicacao) await db.doc(`referralCodes/${codigoIndicacao}`).delete();
+
   // Perfil + subcoleções (ex.: notifications).
   await db.recursiveDelete(db.doc(`users/${uid}`));
 

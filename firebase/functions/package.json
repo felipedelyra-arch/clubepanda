@@ -13,7 +13,7 @@
     "shell": "npm run build && firebase functions:shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "lint": "eslint --ext .ts src"
+    "lint": "oxlint src"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",
@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "oxlint": "^1.78.0",
     "typescript": "^5.7.2"
   },
   "private": true

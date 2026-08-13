@@ -57,14 +57,22 @@ export const stripeWebhook = onRequest(
           const inv = event.data.object as Stripe.Invoice;
           const uid = inv.subscription_details?.metadata?.firebaseUid;
           if (uid) {
-            await db.collection("payments").add({
-              userId: uid,
-              valor: (inv.amount_paid ?? 0) / 100,
-              metodo: "cartao",
-              status: "aprovado",
-              gatewayRef: inv.id,
-              data: FieldValue.serverTimestamp(),
-            });
+            // Id derivado da fatura, e `create` em vez de `add`: o Stripe
+            // reenvia o webhook quando não recebe 2xx a tempo, e com `add()`
+            // cada reenvio virava uma cobrança nova no relatório do dono.
+            // Segunda entrega da mesma fatura agora bate em ALREADY_EXISTS.
+            try {
+              await db.doc(`payments/stripe_${inv.id}`).create({
+                userId: uid,
+                valor: (inv.amount_paid ?? 0) / 100,
+                metodo: "cartao",
+                status: "aprovado",
+                gatewayRef: inv.id,
+                data: FieldValue.serverTimestamp(),
+              });
+            } catch (err) {
+              if ((err as { code?: number }).code !== 6) throw err;
+            }
             if (inv.subscription) {
               await db.doc(`subscriptions/${inv.subscription as string}`).set(
                 {

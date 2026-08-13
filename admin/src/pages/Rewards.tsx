@@ -53,6 +53,7 @@ export function Rewards() {
         descricao: editando.descricao ?? "",
         tipo: editando.tipo ?? "cupom",
         estoque: Number(editando.estoque ?? 0),
+        valor: Number(editando.valor ?? 0),
         resgatavelAte: editando.resgatavelAte ?? null,
         imagem,
       };
@@ -178,6 +179,12 @@ export function Rewards() {
               </select>
             </Field>
             <div className="grid gap-x-3 sm:grid-cols-2">
+              <Field
+                label="Quanto vale (R$)"
+                hint="Preço de cardápio. É com isso que o app soma o “você já economizou” do sócio. 0 = não conta."
+              >
+                <input type="number" step="0.01" min="0" className={inputBase} value={editando.valor ?? 0} onChange={(e) => setEditando({ ...editando, valor: Number(e.target.value) })} />
+              </Field>
               <Field label="Estoque">
                 <input type="number" className={inputBase} value={editando.estoque ?? 0} onChange={(e) => setEditando({ ...editando, estoque: Number(e.target.value) })} />
               </Field>

@@ -73,6 +73,12 @@ export interface Reward {
   imagem?: string | null;
   tipo: RewardTipo;
   estoque: number;
+  /**
+   * Quanto o prêmio vale em reais (preço de cardápio). É o que alimenta o
+   * "você já economizou" na Home do app (`app/lib/core/services/services.dart`).
+   * Zero = não entra na conta.
+   */
+  valor?: number;
   /** Prazo limite pra resgatar (definido pelo dono). Nulo = sem prazo. */
   resgatavelAte?: Date | null;
 }
