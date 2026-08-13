@@ -231,6 +231,18 @@ Tudo pelo mesmo Firestore, em tempo real — salvou no painel, aparece no app:
 - Dados do restaurante (`config/restaurante`) e trava de versão (`config/app`).
 - Do lado do app pro painel: cadastros, assinaturas, resgates e pagamentos.
 
-**Ainda não existe**: integração com o sistema de comanda do salão. Enquanto o PDV não
-gravar em `payments`, mesa, atendente e itens consumidos ficam vazios em produção — só
-a mensalidade aparece.
+**Consumo no salão** entra por duas portas, as duas gravando o mesmo documento em
+`payments` (`tipo: "consumo"`), via `functions/src/lib/consumo.ts`:
+
+- **Automática** — o PDV (ou um middleware que o leia) chama a function `pdvConsumo`,
+  assinando o corpo em HMAC-SHA256 no header `x-pdv-signature` com `PDV_WEBHOOK_SECRET`.
+  Idempotente pelo número da comanda. **Ainda não está ligada**: o restaurante roda
+  Starway e não há API de venda de salão confirmada. A Order API da Teknisa não serve —
+  ela só recebe pedido (app → PDV), não devolve conta fechada.
+- **Manual** — Pagamentos → **Lançar consumo** no painel (`lancarConsumo`, só admin).
+  É o que faz mesa, atendente e itens existirem em produção hoje. Conta digitada fica
+  marcada com `origem: "manual"` e ganha o selo "lançada à mão".
+
+O sócio é identificado pelo `codigoSocio` (6 caracteres, na carteirinha do app), por CPF
+ou pelo uid. O código nasce no cadastro; contas antigas se resolvem com a callable
+`backfillCodigosSocio`.

@@ -8,6 +8,8 @@ export interface AppUser {
   endereco?: string | null;
   role?: string | null;
   criadoEm?: Date | null;
+  /** Código curto da carteirinha, lido no PDV pra identificar o sócio. */
+  codigoSocio?: string | null;
 }
 
 export interface Plan {
@@ -23,6 +25,12 @@ export interface Plan {
   recomendado?: boolean;
   stripePriceId?: string | null;
   ativo?: boolean;
+  /**
+   * Desconto do sócio no salão, em %. Só entra em cena quando o PDV fecha a
+   * conta sem informar quanto descontou — aí o backend calcula por aqui
+   * (functions/src/webhooks/pdv.ts). Vazio/0 = quem manda é sempre o PDV.
+   */
+  descontoPercentual?: number | null;
 }
 
 export interface Promotion {
@@ -176,4 +184,10 @@ export interface Payment {
   itens?: ItemConsumo[] | null;
   /** Quanto o cliente economizou por ser do clube, em reais. */
   descontoClube?: number | null;
+  /**
+   * Só em `consumo`: `pdv` veio da integração, `manual` foi digitado no painel.
+   * Número conferido por máquina e número conferido por gente têm peso
+   * diferente na hora de fechar o mês.
+   */
+  origem?: "pdv" | "manual";
 }

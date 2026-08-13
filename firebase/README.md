@@ -5,7 +5,7 @@ Backend único compartilhado pelo app (Flutter) e pelo painel (React).
 ## Serviços
 
 - **Auth** — email/senha (e provedores extras se quiser).
-- **Firestore** — coleções `users`, `subscriptions`, `plans`, `promotions`, `rewards`, `redemptions`, `payments`.
+- **Firestore** — coleções `users`, `subscriptions`, `plans`, `promotions`, `rewards`, `redemptions`, `payments`, e os índices reversos `socioCodes`/`referralCodes` (código → uid, fechados pro cliente).
 - **Cloud Functions** (TS, região `southamerica-east1`).
 - **Storage** — imagens de promoções/premiações/perfil.
 - **Cloud Messaging** — push.

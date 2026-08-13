@@ -36,8 +36,10 @@ class CarteirinhaScreen extends ConsumerWidget {
           error: (_, _) => const ErrorView(mensagem: 'Erro ao carregar.'),
           data: (u) {
             if (u == null) return const EmptyView(mensagem: 'Sem dados.');
-            // Código que o caixa lê (id do sócio).
-            final codigo = u.uid.toUpperCase();
+            // Código que o caixa lê. O curto (6 caracteres, gerado no
+            // cadastro) é o que o atendente consegue digitar quando o leitor
+            // de QR falha; conta antiga ainda sem backfill cai no uid.
+            final codigo = u.codigoSocio ?? u.uid.toUpperCase();
             return ListView(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
               children: escalonar([

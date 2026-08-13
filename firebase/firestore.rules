@@ -117,11 +117,24 @@ service cloud.firestore {
     }
 
     // ---- payments ----
-    // Só admin lê (financeiro). Escrita só backend (webhooks de pagamento e,
-    // se houver integração, o sistema de comanda que fecha conta no salão).
+    // Dono lê as próprias cobranças (extrato do app: mensalidade + conta de
+    // salão). Admin lê todas, que é o financeiro do painel. Escrita só backend
+    // (webhooks de pagamento e o PDV que fecha conta no salão).
     match /payments/{paymentId} {
-      allow read: if isAdmin();
+      allow read: if isSignedIn()
+                  && (resource.data.userId == request.auth.uid || isAdmin());
       allow write: if false; // apenas Cloud Functions
+    }
+
+    // ---- socioCodes / referralCodes ----
+    // Índice reverso codigo -> uid. Ninguém lê pelo cliente: quem resolve o
+    // código é a Cloud Function (carteirinha no PDV, indicação). Deixar público
+    // entregaria a lista de códigos válidos pra quem quisesse chutar.
+    match /socioCodes/{codigo} {
+      allow read, write: if false; // apenas Cloud Functions
+    }
+    match /referralCodes/{codigo} {
+      allow read, write: if false; // apenas Cloud Functions
     }
 
     // ---- notificationLogs ----

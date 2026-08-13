@@ -8,7 +8,7 @@ setGlobalOptions({ region: "southamerica-east1", maxInstances: 10 });
 
 // Auth / admin
 export { setAdminRole } from "./admin";
-export { onAuthUserCreate } from "./users";
+export { onAuthUserCreate, backfillCodigosSocio } from "./users";
 export { deleteAccount } from "./account";
 export { ensureReferralCode, applyReferral } from "./referral";
 
@@ -29,3 +29,7 @@ export {
 // Webhooks de pagamento
 export { stripeWebhook } from "./webhooks/stripe";
 export { pixWebhook } from "./webhooks/pix";
+
+// Consumo no salão: automático (PDV) e manual (painel)
+export { pdvConsumo } from "./webhooks/pdv";
+export { lancarConsumo } from "./consumo";

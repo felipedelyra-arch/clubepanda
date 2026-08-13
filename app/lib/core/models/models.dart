@@ -14,6 +14,7 @@ class AppUser {
     this.role,
     this.nascimento,
     this.codigoIndicacao,
+    this.codigoSocio,
     this.indicacoes = 0,
   });
 
@@ -28,6 +29,10 @@ class AppUser {
 
   /// Código pra indicar amigos (gerado sob demanda no backend).
   final String? codigoIndicacao;
+
+  /// Código curto da carteirinha, o que o atendente lê no PDV pra identificar
+  /// o sócio. Nasce junto com a conta; contas antigas só têm depois do backfill.
+  final String? codigoSocio;
 
   /// Quantos amigos já foram indicados por este usuário.
   final int indicacoes;
@@ -46,6 +51,7 @@ class AppUser {
       role: m['role'],
       nascimento: (m['nascimento'] as Timestamp?)?.toDate(),
       codigoIndicacao: m['codigoIndicacao'],
+      codigoSocio: m['codigoSocio'],
       indicacoes: (m['indicacoes'] ?? 0) as int,
     );
   }

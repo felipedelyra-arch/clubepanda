@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, ChevronRight, Store, CreditCard } from "lucide-react";
+import { Download, ChevronRight, Store, CreditCard, Plus } from "lucide-react";
 import { useCollection } from "../lib/useCollection";
 import type { AppUser, Payment } from "../lib/types";
 import {
@@ -18,6 +18,7 @@ import {
   LinhaDado,
 } from "../components/ui";
 import { Sheet } from "../components/Modal";
+import { LancarConsumo } from "../components/LancarConsumo";
 import { brl, diaHora, metodoLabel } from "../lib/format";
 import { quandoTexto } from "../lib/oferta";
 
@@ -50,6 +51,7 @@ export function Payments() {
   const [tipo, setTipo] = useState<Tipo>("todos");
   const [metodo, setMetodo] = useState<Metodo>("todos");
   const [aberto, setAberto] = useState<Payment | null>(null);
+  const [lancando, setLancando] = useState(false);
 
   // O documento de pagamento só guarda o uid; o resto vem da coleção de users.
   const porUid = useMemo(() => {
@@ -118,7 +120,7 @@ export function Payments() {
 
   const vazioTexto =
     tipo === "consumo"
-      ? "Nenhuma conta de salão neste período. Contas de mesa só aparecem aqui quando o sistema de comanda do restaurante grava o consumo no Clube — a mensalidade, que vem do gateway, já cai sozinha."
+      ? "Nenhuma conta de salão neste período. Enquanto o sistema de comanda não envia sozinho, use “Lançar consumo” pra registrar a conta na mão — a mensalidade, que vem do gateway, já cai sozinha."
       : "Nenhuma cobrança com esses filtros. Tente um período maior.";
 
   return (
@@ -128,11 +130,20 @@ export function Payments() {
         eyebrow="Dinheiro que entrou"
         descricao="Mensalidade do clube e conta fechada no salão, na mesma lista."
         acao={
-          <Button variant="outline" onClick={exportarCSV} disabled={!filtrados.length}>
-            <Download size={17} /> Exportar CSV
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={exportarCSV} disabled={!filtrados.length}>
+              <Download size={17} /> Exportar CSV
+            </Button>
+            {/* Enquanto o PDV não envia sozinho, é por aqui que mesa,
+                atendente e itens entram. */}
+            <Button onClick={() => setLancando(true)}>
+              <Plus size={17} /> Lançar consumo
+            </Button>
+          </div>
         }
       />
+
+      <LancarConsumo open={lancando} onClose={() => setLancando(false)} />
 
       {/* Filtros numa fita só, acima dos números: mudar o filtro muda o que os
           números contam, então eles precisam estar à vista juntos. */}
@@ -312,6 +323,9 @@ function FichaPagamento({
           <Badge color="red">{p.status}</Badge>
         )}
         <Badge color="gray">{metodoLabel(p.metodo)}</Badge>
+        {/* Conta digitada no painel não passou por conferência de máquina —
+            quem fecha o mês precisa saber disso sem abrir o histórico. */}
+        {p.origem === "manual" && <Badge color="orange">lançada à mão</Badge>}
       </div>
 
       <div className="mb-5 flex items-center gap-3 rounded-2xl border border-linha bg-superficie-2 p-3.5">

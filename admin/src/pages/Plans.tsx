@@ -45,6 +45,7 @@ export function Plans() {
       // destacada do card (plans_screen.dart:133). Com um plano só, é sempre ele.
       recomendado: true,
       stripePriceId: editando.stripePriceId ?? null,
+      descontoPercentual: Number(editando.descontoPercentual ?? 0),
     };
     try {
       if (editando.id) await updateDoc(doc(db, "plans", editando.id), payload);
@@ -120,6 +121,12 @@ export function Plans() {
             </div>
             <Field label="Benefícios (um por linha)"><textarea className={inputBase} rows={4} value={beneficiosStr} onChange={(e) => setBeneficiosStr(e.target.value)} /></Field>
             <Field label="Stripe Price ID"><input className={inputBase} placeholder="price_..." value={editando.stripePriceId ?? ""} onChange={(e) => setEditando({ ...editando, stripePriceId: e.target.value })} /></Field>
+            <Field
+              label="Desconto do sócio no salão (%)"
+              hint="Só é usado quando o PDV fecha a conta sem dizer quanto descontou. Deixe 0 se quem decide o desconto é sempre o caixa."
+            >
+              <input type="number" step="1" min="0" max="100" className={inputBase} value={editando.descontoPercentual ?? 0} onChange={(e) => setEditando({ ...editando, descontoPercentual: Number(e.target.value) })} />
+            </Field>
             <Button onClick={salvar} className="mt-1 w-full">Salvar</Button>
           </>
         )}
