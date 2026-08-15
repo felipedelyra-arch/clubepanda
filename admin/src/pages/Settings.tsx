@@ -394,15 +394,48 @@ export function Settings() {
 function CodigosSocio() {
   const { data: users, loading } = useCollection<AppUser>("users");
   const [rodando, setRodando] = useState(false);
+  const [progresso, setProgresso] = useState(0);
 
   const pendentes = useMemo(() => users.filter((u) => !u.codigoSocio).length, [users]);
 
+  /**
+   * A função processa um pedaço por chamada e devolve `continua` + `cursor`
+   * (ver functions/src/users.ts). Antes ela tentava o clube inteiro numa
+   * chamada só e morria no timeout de 60s com alguns milhares de pendentes.
+   * Aqui o laço vai até acabar, mostrando o andamento — que num backfill
+   * demorado é a diferença entre "está trabalhando" e "travou".
+   */
   async function gerar() {
     if (demoBlock("Códigos não gerados")) return;
     setRodando(true);
+    setProgresso(0);
+
+    let cursor: string | null = null;
+    let gerados = 0;
+    const falhas: string[] = [];
+    // Teto de voltas: o cursor sempre avança, mas um laço infinito no painel do
+    // dono seria pior que um backfill incompleto.
+    const MAX_VOLTAS = 200;
+
     try {
-      const res = await httpsCallable(functions, "backfillCodigosSocio")({});
-      const { gerados, falhas } = res.data as { gerados: number; falhas: string[] };
+      for (let volta = 0; volta < MAX_VOLTAS; volta++) {
+        const res = await httpsCallable(
+          functions,
+          "backfillCodigosSocio"
+        )(cursor ? { cursor } : {});
+        const d = res.data as {
+          gerados: number;
+          falhas: string[];
+          continua: boolean;
+          cursor: string | null;
+        };
+        gerados += d.gerados;
+        falhas.push(...d.falhas);
+        setProgresso(gerados);
+        if (!d.continua) break;
+        cursor = d.cursor;
+      }
+
       if (falhas.length) {
         toast.warning(`${gerados} código(s) gerado(s), ${falhas.length} falhou/falharam.`);
       } else {
@@ -411,7 +444,13 @@ function CodigosSocio() {
         );
       }
     } catch (e) {
-      toast.error((e as Error).message);
+      // Parcial não se perde: o que já foi gravado está gravado, e clicar de
+      // novo retoma — `garantirCodigoSocio` pula quem já tem código.
+      toast.error(
+        gerados > 0
+          ? `${gerados} gerado(s) antes de falhar: ${(e as Error).message}`
+          : (e as Error).message
+      );
     } finally {
       setRodando(false);
     }
@@ -440,7 +479,11 @@ function CodigosSocio() {
       </p>
 
       <Button onClick={gerar} disabled={rodando || pendentes === 0}>
-        {rodando ? "Gerando…" : "Gerar códigos que faltam"}
+        {rodando
+          ? progresso > 0
+            ? `Gerando… ${progresso} de ${pendentes}`
+            : "Gerando…"
+          : "Gerar códigos que faltam"}
       </Button>
     </Card>
   );
