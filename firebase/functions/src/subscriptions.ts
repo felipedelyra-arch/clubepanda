@@ -26,13 +26,27 @@ export const createCheckoutSession = onCall(async (req) => {
   const user = await auth.getUser(uid);
 
   // Reusa/cria customer do Stripe.
+  //
+  // ⚠️ O `if` abaixo é uma corrida: dois toques rápidos no botão de assinar
+  // fazem as duas chamadas lerem o documento antes de qualquer uma gravar, e
+  // as duas criam um customer. Sobram dois clientes no Stripe para a mesma
+  // pessoa, e as cobranças dela se dividem entre os dois — o que atrapalha
+  // suporte, estorno e conciliação, cada um olhando metade do histórico.
+  //
+  // A chave de idempotência resolve no lado certo: o Stripe guarda o
+  // resultado da primeira chamada com aquela chave por 24h e devolve o MESMO
+  // customer para a segunda, em vez de criar outro. Barato, sem transação, e
+  // funciona mesmo se as duas chamadas caírem em instâncias diferentes.
   const userDoc = await db.doc(`users/${uid}`).get();
   let customerId: string | undefined = userDoc.get("stripeCustomerId");
   if (!customerId) {
-    const customer = await stripe().customers.create({
-      email: user.email ?? undefined,
-      metadata: { firebaseUid: uid },
-    });
+    const customer = await stripe().customers.create(
+      {
+        email: user.email ?? undefined,
+        metadata: { firebaseUid: uid },
+      },
+      { idempotencyKey: `customer_${uid}` }
+    );
     customerId = customer.id;
     await db.doc(`users/${uid}`).set({ stripeCustomerId: customerId }, { merge: true });
   }

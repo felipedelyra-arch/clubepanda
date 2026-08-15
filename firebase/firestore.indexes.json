@@ -63,6 +63,11 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "sorte", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [{ "fieldPath": "criadoEm", "order": "ASCENDING" }]
     }
   ],
   "fieldOverrides": []

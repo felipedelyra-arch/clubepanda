@@ -25,6 +25,7 @@ export {
   onPromotionCreated,
   publicarPromocoesAgendadas,
   onRewardCreated,
+  limparAvisosAntigos,
 } from "./push";
 
 // Webhooks de pagamento

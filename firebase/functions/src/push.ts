@@ -255,6 +255,56 @@ export const publicarPromocoesAgendadas = onSchedule(
 );
 
 // ---------------------------------------------------------------------------
+// Faxina da central de avisos
+// ---------------------------------------------------------------------------
+
+/** Avisos mais antigos que isto são apagados. */
+const DIAS_DE_AVISO = 180;
+
+/**
+ * Apaga avisos velhos de todo mundo, uma vez por dia.
+ *
+ * Cada push grava um documento por sócio e nada apagava. O app já leva um teto
+ * de leitura (`kLimiteAvisos`, 50), mas isso só resolveu o custo de LER — a
+ * subcoleção continuava crescendo no banco para sempre, ocupando armazenamento
+ * e deixando a exclusão de conta cada vez mais lenta.
+ *
+ * Seis meses é bem mais do que o app mostra. Ninguém rola até lá, e um aviso de
+ * promoção de meio ano atrás não serve para nada.
+ *
+ * Usa consulta de grupo de coleção: uma varredura pega os avisos velhos de
+ * todos os sócios de uma vez, em vez de percorrer usuário por usuário. Precisa
+ * do índice de `notifications` por `criadoEm` com escopo COLLECTION_GROUP.
+ */
+export const limparAvisosAntigos = onSchedule(
+  { schedule: "every 24 hours", timeZone: "America/Sao_Paulo" },
+  async () => {
+    const corte = Timestamp.fromMillis(Date.now() - DIAS_DE_AVISO * 86400000);
+
+    let apagados = 0;
+    // Teto por execução: a faxina é diária e o que sobrar sai amanhã. Vale mais
+    // terminar dentro do tempo do que tentar limpar tudo e ser cortado no meio.
+    for (let volta = 0; volta < 40; volta++) {
+      const velhos = await db
+        .collectionGroup("notifications")
+        .where("criadoEm", "<", corte)
+        .limit(450)
+        .get();
+      if (velhos.empty) break;
+
+      const lote = db.batch();
+      velhos.docs.forEach((d) => lote.delete(d.ref));
+      await lote.commit();
+      apagados += velhos.size;
+
+      if (velhos.size < 450) break;
+    }
+
+    if (apagados) logger.info("Faxina da central de avisos.", { apagados });
+  }
+);
+
+// ---------------------------------------------------------------------------
 // Prêmios
 // ---------------------------------------------------------------------------
 
