@@ -3,9 +3,9 @@
     "short_name": "PandaVip",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FBF9F5",
+    "theme_color": "#FF8D06",
+    "description": "Clube de vantagens do Tio Panda: pontos, cupons e recompensas.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
