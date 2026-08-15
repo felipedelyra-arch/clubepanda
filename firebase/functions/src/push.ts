@@ -14,10 +14,43 @@ interface Alvo {
   token?: string;
 }
 
+/** Quebra uma lista em pedaços de [tamanho]. */
+function emPedacos<T>(itens: T[], tamanho: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < itens.length; i += tamanho) out.push(itens.slice(i, i + tamanho));
+  return out;
+}
+
+/**
+ * Roda [fn] sobre os pedaços com no máximo [simultaneos] em voo.
+ *
+ * O teto existe porque "tudo de uma vez" com dezenas de milhares de sócios
+ * abriria conexões demais e estouraria a memória da instância — o que se quer
+ * é tirar as idas ao banco da fila, não remover a fila inteira.
+ */
+async function emParalelo<T, R>(
+  pedacos: T[],
+  simultaneos: number,
+  fn: (p: T) => Promise<R>
+): Promise<R[]> {
+  const out: R[] = [];
+  for (const grupo of emPedacos(pedacos, simultaneos)) {
+    out.push(...(await Promise.all(grupo.map(fn))));
+  }
+  return out;
+}
+
 /**
  * Quem deve receber o aviso. Devolve o uid mesmo de quem não tem token: sem
  * token não dá pra tocar o celular, mas o aviso ainda precisa entrar na central
  * do app pra pessoa achar quando abrir.
+ *
+ * ⚠️ O caminho dos assinantes já foi `where('uid', 'in', lote)` de 30 em 30,
+ * sequencial. Com 2.500 assinantes isso dava 85 idas ao banco em fila e comia
+ * 68% do timeout de 60s da função — e crescia linear com o clube. Agora os
+ * perfis vêm por `getAll` (leitura direta por id, sem query nem índice), em
+ * pedaços paralelos. Mesmo número de documentos lidos, ordem de grandeza a
+ * menos de viagens.
  */
 async function coletarAlvos(onlySubscribers: boolean): Promise<Alvo[]> {
   const alvos = new Map<string, Alvo>();
@@ -33,16 +66,23 @@ async function coletarAlvos(onlySubscribers: boolean): Promise<Alvo[]> {
       .where("status", "==", "active")
       .get();
     const uids = [...new Set(subs.docs.map((d) => d.get("userId") as string))].filter(Boolean);
-    // Firestore 'in' aceita até 30 por query — pagina.
-    for (let i = 0; i < uids.length; i += 30) {
-      const lote = uids.slice(i, i + 30);
-      if (lote.length === 0) continue;
-      const users = await db.collection("users").where("uid", "in", lote).get();
-      users.forEach((u) => somar(u.get("uid") ?? u.id, u.get("fcmToken")));
-    }
+
+    // Só o token interessa aqui; a máscara evita trazer o perfil inteiro de
+    // cada assinante pra dentro da memória da função.
+    const snaps = await emParalelo(
+      emPedacos(uids, 300),
+      4,
+      (lote) =>
+        db.getAll(...lote.map((uid) => db.doc(`users/${uid}`)), {
+          fieldMask: ["fcmToken"],
+        })
+    );
+    snaps.flat().forEach((u) => {
+      if (u.exists) somar(u.id, u.get("fcmToken"));
+    });
   } else {
-    const users = await db.collection("users").get();
-    users.forEach((u) => somar(u.get("uid") ?? u.id, u.get("fcmToken")));
+    const users = await db.collection("users").select("fcmToken").get();
+    users.forEach((u) => somar(u.id, u.get("fcmToken")));
   }
 
   return [...alvos.values()];
@@ -53,11 +93,11 @@ async function gravarNaCentral(
   alvos: Alvo[],
   aviso: { titulo: string; corpo: string; tipo: string }
 ) {
-  for (let i = 0; i < alvos.length; i += 450) {
-    const lote = db.batch();
-    alvos.slice(i, i + 450).forEach((a) => {
+  await emParalelo(emPedacos(alvos, 450), 4, async (lote) => {
+    const batch = db.batch();
+    lote.forEach((a) => {
       const ref = db.collection("users").doc(a.uid).collection("notifications").doc();
-      lote.set(ref, {
+      batch.set(ref, {
         titulo: aviso.titulo,
         corpo: aviso.corpo,
         tipo: aviso.tipo,
@@ -65,8 +105,8 @@ async function gravarNaCentral(
         criadoEm: FieldValue.serverTimestamp(),
       });
     });
-    await lote.commit();
-  }
+    await batch.commit();
+  });
 }
 
 /**
@@ -89,18 +129,16 @@ async function enviarAviso(opts: {
   const { titulo, corpo, publico, origem, tipo = "info", imagem } = opts;
   const alvos = await coletarAlvos(publico === "assinantes");
 
-  let enviados = 0;
   const tokens = alvos.map((a) => a.token).filter((t): t is string => !!t);
   // sendEachForMulticast aceita até 500 tokens por chamada.
-  for (let i = 0; i < tokens.length; i += 500) {
-    const lote = tokens.slice(i, i + 500);
-    const res = await messaging.sendEachForMulticast({
+  const envios = await emParalelo(emPedacos(tokens, 500), 4, (lote) =>
+    messaging.sendEachForMulticast({
       tokens: lote,
       notification: { title: titulo, body: corpo, imageUrl: imagem },
       android: { priority: "high" },
-    });
-    enviados += res.successCount;
-  }
+    })
+  );
+  const enviados = envios.reduce((s, r) => s + r.successCount, 0);
 
   await gravarNaCentral(alvos, { titulo, corpo, tipo });
 
