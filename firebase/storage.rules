@@ -31,10 +31,18 @@ service firebase.storage {
       allow write: if isAdmin() && isImage();
     }
 
-    // Foto de perfil: dono escreve a própria, e só quem tem sessão lê. Sem
-    // leitura pública — foto de sócio não é material de vitrine.
+    // Foto de perfil: cada um escreve e lê a própria; o admin lê todas.
+    //
+    // Antes bastava ter sessão pra ler, o que deixava um sócio buscar a foto de
+    // outro se descobrisse o uid. Ninguém precisa disso: o app só mostra a foto
+    // do próprio dono e o painel não exibe foto de sócio em tela nenhuma.
+    //
+    // ⚠️ Isto fecha o caminho pelo SDK, não a URL de download que o app grava
+    // em `users/{uid}.fotoUrl` — essa carrega token e funciona pra quem tiver o
+    // link. O que protege a URL é a rule de `users`, que só entrega o documento
+    // ao dono e ao admin.
     match /users/{userId}/{fileName} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow write: if isSignedIn() && request.auth.uid == userId && isImage();
     }
 

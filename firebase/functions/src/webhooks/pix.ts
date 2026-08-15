@@ -39,25 +39,52 @@ export const pixWebhook = onRequest({ invoker: "public" }, async (req, res) => {
     };
 
     if (body.status === "paid" && body.firebaseUid) {
-      await db.collection("payments").add({
-        userId: body.firebaseUid,
-        valor: body.valor ?? 0,
-        metodo: "pix",
-        status: "aprovado",
-        gatewayRef: body.txid ?? null,
-        data: FieldValue.serverTimestamp(),
-      });
+      // Sem txid não há como distinguir uma cobrança nova de um reenvio da
+      // mesma, e todo gateway reenvia quando não recebe 2xx a tempo. Recusar
+      // é melhor que gravar duplicado: o 400 aparece no log de quem chamou.
+      if (!body.txid) {
+        res.status(400).send("txid obrigatório.");
+        return;
+      }
+
+      // Id derivado do txid, e `create` em vez de `add`: o reenvio da mesma
+      // cobrança bate em ALREADY_EXISTS em vez de virar uma segunda linha no
+      // financeiro do dono. Mesmo tratamento que o webhook do Stripe já tinha.
+      try {
+        await db.doc(`payments/pix_${body.txid}`).create({
+          userId: body.firebaseUid,
+          valor: body.valor ?? 0,
+          metodo: "pix",
+          status: "aprovado",
+          gatewayRef: body.txid,
+          data: FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        if ((err as { code?: number }).code !== 6) throw err;
+      }
 
       // Pix aqui trata pagamento avulso/assinatura conforme seu modelo.
       if (body.planId) {
-        await db.collection("subscriptions").add({
-          userId: body.firebaseUid,
-          planId: body.planId,
-          status: "active",
-          gatewaySubscriptionId: body.txid ?? null,
-          formaPagamento: "pix",
-          inicioEm: FieldValue.serverTimestamp(),
-        });
+        // Id derivado de quem assinou + o que assinou, não do txid: a
+        // renovação chega com txid novo, e com `add()` cada mês virava mais
+        // uma assinatura `active` para o mesmo sócio. Todo mundo que consulta
+        // isso filtra por `userId` + `status` com `limit(1)` (redemptions.ts,
+        // lib/consumo.ts, push.ts), então o duplicado não dava erro em lugar
+        // nenhum — só inflava relatório e deixava resíduo no cancelamento.
+        const subRef = db.doc(`subscriptions/pix_${body.firebaseUid}_${body.planId}`);
+        const jaExiste = (await subRef.get()).exists;
+        await subRef.set(
+          {
+            userId: body.firebaseUid,
+            planId: body.planId,
+            status: "active",
+            gatewaySubscriptionId: body.txid,
+            formaPagamento: "pix",
+            // Só na criação: renovação não pode reescrever a data de início.
+            ...(jaExiste ? {} : { inicioEm: FieldValue.serverTimestamp() }),
+          },
+          { merge: true }
+        );
       }
     }
 

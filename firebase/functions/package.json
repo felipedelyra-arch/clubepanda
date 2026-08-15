@@ -14,7 +14,8 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "lint": "oxlint src",
-    "test:rules": "node --test ../test/rules.test.js"
+    "test:rules": "node --test ../test/rules.test.js",
+    "test:storage": "node --test ../test/storage.rules.test.js"
   },
   "dependencies": {
     "firebase-admin": "^12.7.0",
