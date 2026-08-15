@@ -23,7 +23,7 @@ export function useUsuariosPorId(uids: string[]): Map<string, AppUser> {
   useEffect(() => {
     if (IS_DEMO) {
       const m = new Map<string, AppUser>();
-      ((demoData["users"] ?? []) as AppUser[]).forEach((u) => m.set(u.uid ?? u.id, u));
+      ((demoData["users"] ?? []) as AppUser[]).forEach((u) => m.set(u.uid, u));
       setCache(m);
       return;
     }
@@ -45,7 +45,9 @@ export function useUsuariosPorId(uids: string[]): Map<string, AppUser> {
         );
         snaps.forEach((s) => {
           if (s && s.exists()) {
-            achados.push([s.id, { id: s.id, ...s.data() } as AppUser]);
+            // O id do documento É o uid (users/{uid}); o campo `uid` de dentro
+            // é espelho dele. Vale o id, que existe sempre.
+            achados.push([s.id, { ...s.data(), uid: s.id } as AppUser]);
           }
         });
         if (cancelado) return;

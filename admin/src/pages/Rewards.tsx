@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { addDoc, collection, deleteDoc, doc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, limit, updateDoc, where } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
 import { Plus, Pencil, Trash2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { db, storage, functions } from "../lib/firebase";
-import { useCollection } from "../lib/useCollection";
+import { useCollection, useCollectionQuery } from "../lib/useCollection";
 import { useContagem } from "../lib/useContagem";
-import type { Reward, RewardTipo } from "../lib/types";
+import type { Redemption, Reward, RewardTipo } from "../lib/types";
 import {
   Card,
   Button,
@@ -24,6 +24,9 @@ import { toLocalInput } from "../lib/oferta";
 const tipos: RewardTipo[] = ["rodizio", "prato", "sobremesa", "cupom"];
 const vazio: Partial<Reward> = { titulo: "", descricao: "", tipo: "cupom", estoque: 1, resgatavelAte: null };
 
+/** Quantos resgates pendentes a lista do caixa carrega de uma vez. */
+const TETO_PENDENTES = 50;
+
 /** Formata o prazo pra exibição. */
 function fmtPrazo(d?: Date | null): string {
   if (!d) return "Sem prazo";
@@ -32,14 +35,30 @@ function fmtPrazo(d?: Date | null): string {
 
 export function Rewards() {
   const { data, loading, error } = useCollection<Reward>("rewards");
-  // Só o número interessa aqui. Baixar `redemptions` inteira para contar os
-  // pendentes era pagar uma leitura por resgate já feito no clube.
-  const pendentes = useContagem(
+  // O total vai no resumo lá em cima. Contar no servidor evita baixar
+  // `redemptions` inteira só pra exibir um número.
+  const totalPendentes = useContagem(
     "redemptions",
     () => [where("status", "==", "disponivel")],
     "disponivel",
     (r) => r.status === "disponivel"
   );
+
+  // A lista de baixo é outra coisa: o dono valida resgate por resgate no caixa,
+  // então precisa dos documentos, não da contagem. Sem `orderBy` de propósito —
+  // combinar com o filtro de status exigiria um índice composto que não existe,
+  // e a fila é curta. O teto evita virar uma coleção inteira se acumular.
+  const { data: resgates } = useCollectionQuery<Redemption>(
+    "redemptions",
+    () => [where("status", "==", "disponivel"), limit(TETO_PENDENTES)],
+    "disponivel",
+    TETO_PENDENTES
+  );
+
+  // Em modo demo o hook devolve a coleção inteira, sem aplicar o filtro — sem
+  // isto o painel de demonstração listaria resgate já usado como pendente, e
+  // ainda brigaria com a contagem ao lado. Em produção é redundante e grátis.
+  const pendentes = resgates.filter((r) => r.status === "disponivel");
   const [editando, setEditando] = useState<Partial<Reward> | null>(null);
   const [excluir, setExcluir] = useState<Reward | null>(null);
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -99,8 +118,8 @@ export function Rewards() {
       <PageHeader
         titulo="Premiações"
         descricao={
-          pendentes
-            ? `${pendentes} resgate(s) esperando validação no caixa`
+          totalPendentes
+            ? `${totalPendentes} resgate(s) esperando validação no caixa`
             : "Prêmios que o restaurante libera pros sócios"
         }
         acao={

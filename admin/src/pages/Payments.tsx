@@ -9,7 +9,7 @@ import {
 } from "firebase/firestore";
 import { useCollectionQuery } from "../lib/useCollection";
 import { useUsuariosPorId } from "../lib/useUsuariosPorId";
-import type { Payment } from "../lib/types";
+import type { AppUser, Payment } from "../lib/types";
 import {
   Card,
   Badge,
