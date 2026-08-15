@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -33,6 +34,26 @@ Future<void> main() async {
   if (!kDemo) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
+    );
+
+    // Cache em disco, explícito, antes de qualquer uso do Firestore.
+    //
+    // ⚠️ No Android e no iOS isto já é o padrão. **Na web não é**: com
+    // `persistenceEnabled` em `null`, o cloud_firestore_web cai em
+    // `memoryLocalCache` (cloud_firestore_web/lib/cloud_firestore_web.dart) —
+    // sem cache em disco e sem fila de escrita que sobreviva a recarregar a
+    // página. É esse o build que roda em pandavip-app.web.app.
+    //
+    // Com isto ligado, o app abre mostrando os últimos dados mesmo sem
+    // internet, e uma escrita feita offline fica guardada e sobe sozinha
+    // quando a conexão volta.
+    //
+    // `WebPersistentMultipleTabManager`: no modo padrão (aba única) a SEGUNDA
+    // aba aberta no mesmo navegador não consegue a trava do IndexedDB e falha.
+    // O dono abre o painel e o app lado a lado — isso ia acontecer com ele.
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+      webPersistentTabManager: WebPersistentMultipleTabManager(),
     );
     // App Check: prova ao Firebase que a chamada veio deste app, e não de um
     // script com a chave de API copiada do APK. Enquanto a imposição estiver
