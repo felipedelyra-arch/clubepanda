@@ -1,7 +1,11 @@
 # PandaVip — Relatório de Escalabilidade e Resiliência
 
-**Fase 1 — Diagnóstico.** Nenhum código de produção foi alterado.
-Data: 15/08/2026 · Commit base: `11df0cd` · Árvore limpa.
+**Fase 1 (diagnóstico) e Onda 1 (ganhos rápidos) — concluídas.**
+Data: 15/08/2026 · Commit base do diagnóstico: `11df0cd`
+
+> **Estado:** a Onda 1 foi executada. Os resultados estão na seção 10, no fim.
+> As seções 1 a 9 são o diagnóstico original, mantido como estava para servir
+> de linha de base — o que foi corrigido depois está marcado ao lado.
 
 ---
 
@@ -140,10 +144,33 @@ Severidade: **P0** = quebra na cara do cliente · **P1** = quebra ao crescer ·
 | 4 | `notifications` e `redemptions` do app sem `limit`. | `app/lib/core/services/services.dart:173`, `:193` | **P1** — custo por sócio cresce sem teto | **P** | Baixo |
 | 5 | `backfillCodigosSocio` varre `users` inteiro e roda 1 transação por pessoa, sequencial. | `firebase/functions/src/users.ts:50-63` | **P1** — estoura o timeout de 60s por volta de 500–1.000 pendentes | **P** | Baixo |
 | 6 | Escrita de 1 documento de aviso por pessoa, para sempre, sem expurgo. | `firebase/functions/src/push.ts:52-70` | **P1** — é a causa raiz do #4 | **M** | Baixo |
-| 7 | `maxInstances: 10` global, aplicado inclusive ao webhook do PDV. | `firebase/functions/src/index.ts:7` | **P1** — teto rígido de concorrência para tudo | **P** | Baixo (mas mexe em custo) |
+| 7 | ~~`maxInstances: 10` global, aplicado inclusive ao webhook do PDV.~~ **RETIRADO — eu errei, ver abaixo** | `firebase/functions/src/index.ts:7` | não é gargalo | — | — |
 | 8 | `deleteAccount` apaga com um único `batch()` (limite de 500 documentos). | `firebase/functions/src/account.ts:33-41` | **P2** — falha em sócio com +500 resgates/assinaturas | **P** | Baixo |
 | 9 | `createCheckoutSession` sem trava de concorrência: 2 toques rápidos podem criar 2 clientes no Stripe. | `firebase/functions/src/subscriptions.ts:29-38` | **P2** — sujeira no Stripe | **P** | Baixo |
 | 10 | Coleções compartilhadas (`rewards`, `plans`, `menu`) lidas inteiras por cada app aberto. | `app/lib/core/services/services.dart:70,80,145` | **P2** — hoje é pequeno; vira custo com cardápio grande | **P** | Baixo |
+
+#### Correção ao item 7 (`maxInstances`)
+
+Listei isso como P1 dizendo que era "teto rígido de concorrência para tudo".
+Está errado em duas frentes, e a conclusão se inverte:
+
+1. No Cloud Functions **de 2ª geração cada função tem o próprio conjunto de
+   instâncias**. `maxInstances: 10` em `setGlobalOptions` vale **por função**,
+   não é uma cota compartilhada. O webhook do PDV não disputa instância com o
+   resgate do app.
+2. As funções quase não entram no caminho quente. Abrir o app, ver oferta, ver
+   cardápio e ver carteirinha falam direto com o Firestore. Função só é
+   chamada em evento raro: resgatar, assinar, cancelar, excluir conta, aplicar
+   indicação.
+
+E há um detalhe que torna mexer aqui **contraproducente**: o gargalo real do
+resgate é a disputa pelo documento do prêmio (item 1). Enquanto isso não for
+resolvido, um teto baixo de instâncias funciona como freio — segura a
+avalanche antes que ela vire transação abortada na cara do cliente. Subir o
+teto agora pioraria o sintoma.
+
+**Decisão: não mexer.** Reavaliar depois do item 1 da Onda 2, junto com o
+alerta de orçamento.
 
 ### O que **não** é problema (verificado, para não gastar esforço à toa)
 
@@ -329,3 +356,90 @@ risco baixo, e derrubam o custo projetado em 10×.
 
 **A Onda 2 (item 7, o resgate) é a que decide se o app sobrevive ao dia em que o
 dono cadastrar um rodízio grátis e mandar push para todo mundo.**
+
+---
+
+## 10. Onda 1 — executada (15/08/2026)
+
+### 10.0 A regra de `users` foi validada primeiro
+
+`firebase/test/rules.test.js`, **21 casos, todos passando**. Sete deles copiam
+literalmente os campos de cada ponto de escrita do app; o resto cobre o que a
+regra existe para barrar. **Veredito: a lista branca do commit `11df0cd` está
+completa e correta. Nenhuma correção foi necessária.**
+
+Rodar com `cd firebase/functions && npm run test:rules`, com o emulador do
+Firestore no ar. Acrescentar um campo em qualquer tela de perfil sem pôr na
+lista passa a quebrar o teste em vez do cliente.
+
+### 10.1 Antes e depois
+
+| O que | Antes | Depois | Fator |
+|---|---:|---:|---:|
+| Push para 2.500 assinantes — idas ao banco | 85 | 10 | **8,5×** |
+| Push para 2.500 assinantes — tempo (emulador) | 40.148 ms | 857 ms | 46,8× |
+| Push — orçamento de timeout consumido | 66,9% | 1,4% | — |
+| Abrir o app (sócio com 300 avisos) | 303 leituras | 53 | **5,7×** |
+| Painel — Dashboard | 18.100 | 19 | **953×** |
+| Painel — Configurações | 5.600 | 52 | 108× |
+| Painel — Notificações | 8.100 | 103 | 79× |
+| Painel — Financeiro | 15.600 | 1.000 | 16× |
+| Painel — Membros | 18.101 | 8.101 | 2× |
+| **Painel — uma volta por todas as páginas** | **65.501** | **9.276** | **7×** |
+
+Custo projetado, com as mesmas contas do item 3.3:
+
+| | Antes | Depois |
+|---|---|---|
+| Abertura de app, 10.000 sócios | ~R$ 597/mês | ~R$ 103/mês |
+| Painel, 20 voltas por dia | ~R$ 127/mês | ~R$ 18/mês |
+
+> **Leia os fatores, não os milissegundos.** As contagens de leitura e de idas
+> ao banco valem para produção — são determinadas pelo código. Os tempos são de
+> emulador e só servem para comparar antes e depois na mesma máquina.
+
+### 10.2 O que mudou, item a item
+
+| # | Item | Situação | Commit |
+|---|---|---|---|
+| 2 | Push para assinantes de 30 em 30, sequencial | **corrigido** — `getAll` por id, em pedaços paralelos | `4f34529` |
+| 3 | Painel baixando coleções inteiras | **corrigido** — agregação no servidor, filtro na consulta, ficha sob demanda | `d02172e`, `b20a9ae` |
+| 4 | `notifications` sem `limit` | **corrigido** — `limit(50)` | `0c98e5d` |
+| 5 | `backfillCodigosSocio` estourando o timeout | **corrigido** — pedaços com cursor, verificado em 600 perfis | `3bb57af` |
+| 8 | `deleteAccount` com batch único | **corrigido** — voltas de 450 | `1049e51` |
+| 7 | `maxInstances` | **retirado** — eu tinha errado o diagnóstico (ver seção 4) | — |
+
+Correções que apareceram no caminho e não estavam na lista:
+
+- **`_marcarLidas` (app)** montava um batch único com todos os avisos não
+  lidos. Sócio com mais de 500 estourava o limite do batch, num `catch`
+  silencioso — e tudo continuava não lido para sempre. Agora vai em lotes.
+- **Aviso de lista cortada no Financeiro.** Sem ele, os totais da tela
+  pareceriam o período inteiro quando são só as mais recentes, e o dono
+  fecharia o mês com número menor que a verdade.
+
+### 10.3 Mudança de comportamento assumida
+
+Os cartões e gráficos do **Dashboard deixaram de atualizar sozinhos em tempo
+real** — agregação é consulta pontual, não listener. Recarregam ao abrir a
+página e num botão "Atualizar" ao lado do título. O bloco "No ar agora"
+(ofertas e prêmios) continua ao vivo.
+
+### 10.4 Ainda aberto
+
+- **Item 1, a disputa pelo documento do prêmio — intocado.** É o P0, é Onda 2,
+  e é o que decide o dia em que o dono cadastrar um rodízio grátis e mandar
+  push. Precisa de decisão de desenho: contador distribuído ou cupons
+  pré-gerados.
+- **Item 6**, expurgo de avisos antigos: o `limit(50)` tratou o custo de
+  leitura, mas a subcoleção continua crescendo para sempre no banco.
+- **Membros** ainda carrega `users` e `subscriptions` inteiras. Só 2× de ganho.
+  Quando o clube passar de alguns milhares, precisa de busca no servidor
+  (campo `nomeBusca` em minúsculas, consulta por prefixo) e paginação. Está
+  comentado no arquivo.
+- **Item 9**, `createCheckoutSession` sem trava de concorrência: fica com a
+  Onda 2, junto do trabalho de idempotência, onde pertence.
+- **Índice novo** em `payments` (status ASC, data ASC) precisa subir com
+  `firebase deploy --only firestore:indexes` antes do painel ir a produção.
+- **Nada disso está no ar.** Continua valendo: sem Blaze, as 7 funções não
+  existem em produção.
