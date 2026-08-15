@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
+import '../../core/services/chamada.dart';
 import '../../core/demo.dart';
 import '../../core/restaurante.dart';
 import '../../core/theme/colors.dart';
@@ -569,10 +570,13 @@ class _IndicarSheetState extends ConsumerState<_IndicarSheet> {
       return;
     }
     try {
-      final res = await ref
-          .read(functionsProvider)
-          .httpsCallable('ensureReferralCode')
-          .call();
+      // Só leitura, do ponto de vista do sócio: a função devolve o código que
+      // já existe e cria na primeira vez. Repetir é inofensivo.
+      final res = await Chamada.chamar(
+        ref.read(functionsProvider),
+        'ensureReferralCode',
+        repetir: true,
+      );
       if (mounted) {
         setState(() {
           _codigo = res.data['code'] as String?;
@@ -580,6 +584,8 @@ class _IndicarSheetState extends ConsumerState<_IndicarSheet> {
         });
       }
     } catch (_) {
+      // Sem código na tela: o cartão de indicação já tem estado vazio.
+      // Insistir mais que isso atrasaria a abertura do perfil.
       if (mounted) setState(() => _carregando = false);
     }
   }

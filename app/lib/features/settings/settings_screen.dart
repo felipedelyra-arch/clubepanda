@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
+import '../../core/services/chamada.dart';
 import '../../core/services/push_service.dart';
 import '../../core/demo.dart';
 import '../../core/restaurante.dart';
@@ -763,18 +763,29 @@ Future<void> _excluirConta(BuildContext context, WidgetRef ref) async {
     );
   }
   try {
-    await ref.read(functionsProvider).httpsCallable('deleteAccount').call();
+    // Insistir é seguro: a exclusão grava o progresso etapa por etapa e
+    // continua de onde parou (functions/src/account.ts). Antes, uma queda no
+    // meio deixava a conta pela metade e o sócio só via um erro genérico.
+    await Chamada.chamar(
+      ref.read(functionsProvider),
+      'deleteAccount',
+      repetir: true,
+    );
     await sair(ref);
     if (context.mounted) {
       // rootNavigator: o loading foi empilhado lá, não no Navigator da shell.
       Navigator.of(context, rootNavigator: true).pop(); // fecha loading
       context.go('/login');
     }
-  } on FirebaseFunctionsException catch (e) {
+  } catch (e) {
     if (context.mounted) {
       Navigator.of(context, rootNavigator: true).pop(); // fecha loading
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Não foi possível excluir agora.')),
+        SnackBar(
+          content: Text(
+            mensagemDeErro(e, acaoFalhou: 'A conta NÃO foi excluída'),
+          ),
+        ),
       );
     }
   }

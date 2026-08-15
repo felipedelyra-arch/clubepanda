@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
+import '../../core/services/chamada.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/dimens.dart';
@@ -108,17 +108,27 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
     }
     setState(() => _loading = true);
     try {
-      final callable =
-          ref.read(functionsProvider).httpsCallable('createCheckoutSession');
-      final res = await callable.call({'planId': widget.plan.id});
+      // `repetir: false`: abrir checkout cria uma sessão no Stripe, e repetir
+      // sem saber se a primeira vingou criaria duas. Sessão órfã não cobra
+      // ninguém, mas suja o painel do gateway — e não há ganho, porque quem
+      // não recebeu a URL não foi levado a lugar nenhum e vai tocar de novo.
+      final res = await Chamada.chamar(
+        ref.read(functionsProvider),
+        'createCheckoutSession',
+        dados: {'planId': widget.plan.id},
+      );
       final url = res.data['url'] as String?;
       if (url != null && await canLaunchUrl(Uri.parse(url))) {
         await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       }
-    } on FirebaseFunctionsException catch (e) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'Erro ao iniciar checkout.')),
+          SnackBar(
+            content: Text(
+              mensagemDeErro(e, acaoFalhou: 'A assinatura não foi iniciada'),
+            ),
+          ),
         );
       }
     } finally {
@@ -599,19 +609,28 @@ class _AssinaturaAtiva extends ConsumerWidget {
       return;
     }
     try {
-      await ref
-          .read(functionsProvider)
-          .httpsCallable('cancelSubscription')
-          .call();
+      // Cancelar é idempotente por natureza: a função marca a assinatura para
+      // terminar no fim do período, e repetir isso dá o mesmo estado. Vale
+      // insistir, porque desistir calado deixaria o sócio achando que cancelou
+      // quando não cancelou — e ele só descobriria na próxima fatura.
+      await Chamada.chamar(
+        ref.read(functionsProvider),
+        'cancelSubscription',
+        repetir: true,
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Assinatura cancelada.')),
         );
       }
-    } on FirebaseFunctionsException catch (e) {
+    } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message ?? 'Erro ao cancelar.')),
+          SnackBar(
+            content: Text(
+              mensagemDeErro(e, acaoFalhou: 'A assinatura NÃO foi cancelada'),
+            ),
+          ),
         );
       }
     }

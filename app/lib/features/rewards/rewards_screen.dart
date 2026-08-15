@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/services/services.dart';
+import '../../core/services/chamada.dart';
 import '../../core/analytics.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
@@ -411,21 +411,25 @@ class _RewardSheetState extends ConsumerState<_RewardSheet> {
       return;
     }
     try {
-      final callable =
-          ref.read(functionsProvider).httpsCallable('redeemReward');
-      final res = await callable.call({'rewardId': widget.reward.id});
+      // `repetir: true` só é seguro porque o resgate é idempotente: o id do
+      // documento vem do prêmio e da pessoa, então repetir a chamada devolve o
+      // MESMO código em vez de consumir outro cupom. Sem essa garantia no
+      // servidor, insistir aqui daria dois prêmios para a mesma pessoa.
+      final res = await Chamada.chamar(
+        ref.read(functionsProvider),
+        'redeemReward',
+        dados: {'rewardId': widget.reward.id},
+        repetir: true,
+      );
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       logEventoUi(ref, 'reward_redeemed',
           params: {'reward_id': widget.reward.id});
       setState(() => _codigo = res.data['codigo'] as String);
-    } on FirebaseFunctionsException catch (e) {
+    } catch (e) {
       if (mounted) {
-        setState(() => _erro = e.message ?? 'Não foi possível resgatar.');
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _erro = 'Não foi possível resgatar. Tente de novo.');
+        setState(() => _erro =
+            mensagemDeErro(e, acaoFalhou: 'O prêmio não foi resgatado'));
       }
     } finally {
       if (mounted) setState(() => _loading = false);

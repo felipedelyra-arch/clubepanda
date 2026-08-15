@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
+import '../../core/services/chamada.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/panda_logo.dart';
@@ -94,6 +96,13 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       _loading = true;
       _erro = null;
     });
+
+    // Capturado antes do primeiro `await`: quando o cadastro termina, o router
+    // já mandou a tela para /verificar-email e o `context` daqui não acha mais
+    // um Scaffold. O messenger da raiz sobrevive à troca de rota.
+    final messenger = ScaffoldMessenger.of(context);
+    String? avisoIndicacao;
+
     try {
       final cred =
           await ref.read(firebaseAuthProvider).createUserWithEmailAndPassword(
@@ -122,17 +131,39 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         'criadoEm': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // Código de indicação (opcional). Falha aqui não bloqueia o cadastro.
+      // Código de indicação (opcional). Falha aqui não bloqueia o cadastro —
+      // a conta já existe e o sócio precisa entrar.
+      //
+      // Mas antes falhava CALADO: um `catch` vazio engolia tudo, e quem
+      // digitou o código de um amigo com a rede oscilando terminava o cadastro
+      // sem indicação nenhuma e sem nunca saber. Agora repete (a função recusa
+      // a segunda aplicação, então insistir é seguro) e, se ainda assim não
+      // for, avisa e diz onde refazer.
       final codigo = _codigo.text.trim();
       if (codigo.isNotEmpty) {
         try {
-          await ref
-              .read(functionsProvider)
-              .httpsCallable('applyReferral')
-              .call({'code': codigo});
-        } catch (_) {
-          // Código inválido/já usado — segue sem interromper o cadastro.
+          await Chamada.chamar(
+            ref.read(functionsProvider),
+            'applyReferral',
+            dados: {'code': codigo},
+            repetir: true,
+          );
+        } catch (e) {
+          avisoIndicacao = e is FirebaseFunctionsException &&
+                  (e.code == 'not-found' || e.code == 'already-exists')
+              ? (e.message ?? 'Código de indicação não aplicado.')
+              : 'Sua conta foi criada, mas o código de indicação não foi '
+                  'aplicado. Você pode informá-lo depois em Perfil.';
         }
+      }
+
+      if (avisoIndicacao != null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(avisoIndicacao),
+            duration: const Duration(seconds: 6),
+          ),
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _erro = _mensagemErro(e.code));
