@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { httpsCallable } from "firebase/functions";
+import { where, orderBy, limit } from "firebase/firestore";
 import { Send, Megaphone, Gift, Info, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { functions } from "../lib/firebase";
-import { useCollection } from "../lib/useCollection";
-import type { AppUser, Subscription, PushLog } from "../lib/types";
+import { useCollectionQuery } from "../lib/useCollection";
+import { useContagem } from "../lib/useContagem";
+import type { PushLog } from "../lib/types";
 import {
   Card,
   Button,
@@ -48,10 +50,6 @@ const modelos = [
 ] as const;
 
 export function Notifications() {
-  const { data: users } = useCollection<AppUser>("users");
-  const { data: subs } = useCollection<Subscription>("subscriptions");
-  const { data: logs } = useCollection<PushLog>("notificationLogs");
-
   const [titulo, setTitulo] = useState("");
   const [corpo, setCorpo] = useState("");
   const [publico, setPublico] = useState<"todos" | "assinantes">("todos");
@@ -59,16 +57,40 @@ export function Notifications() {
 
   // Estimativa de alcance pelo cadastro. Não é o número exato de entregas: só
   // quem tem o app instalado e o aviso ligado tem token pra receber.
-  const alcance = useMemo(() => {
-    if (publico === "assinantes")
-      return new Set(subs.filter((s) => s.status === "active").map((s) => s.userId)).size;
-    return users.filter((u) => u.role !== "admin").length;
-  }, [publico, users, subs]);
-
-  const historico = useMemo(
-    () => [...logs].sort((a, b) => (b.criadoEm?.getTime() ?? 0) - (a.criadoEm?.getTime() ?? 0)),
-    [logs]
+  //
+  // Contado no servidor: esta tela baixava `users` e `subscriptions` inteiras
+  // para exibir um número de duas casas.
+  const assinantes = useContagem(
+    "subscriptions",
+    () => [where("status", "==", "active")],
+    "ativos",
+    (s) => s.status === "active"
   );
+  const totalPerfis = useContagem("users", () => [], "todos");
+  const admins = useContagem(
+    "users",
+    () => [where("role", "==", "admin")],
+    "admins",
+    (u) => u.role === "admin"
+  );
+  // Total menos admins, e não `role != 'admin'`: perfil criado pelo app não tem
+  // o campo `role`, e consulta de desigualdade descarta documento sem o campo.
+  const alcance =
+    publico === "assinantes"
+      ? assinantes
+      : totalPerfis == null || admins == null
+        ? null
+        : Math.max(0, totalPerfis - admins);
+
+  // O histórico de disparos é curto por natureza (um por aviso enviado), mas
+  // tem teto porque nada o apaga.
+  const { data: logs } = useCollectionQuery<PushLog>(
+    "notificationLogs",
+    () => [orderBy("criadoEm", "desc"), limit(100)],
+    "historico",
+    100
+  );
+  const historico = logs;
 
   const podeEnviar = titulo.trim().length > 0 && corpo.trim().length > 0 && !enviando;
 
@@ -169,7 +191,12 @@ export function Notifications() {
                 ]}
               />
               <p className="mt-2 text-xs text-tinta-3">
-                {alcance === 1 ? "1 pessoa" : `${alcance} pessoas`} no cadastro.
+                {alcance == null
+                  ? "Contando…"
+                  : alcance === 1
+                    ? "1 pessoa"
+                    : `${alcance} pessoas`}{" "}
+                no cadastro.
                 Recebem de fato os que têm o app instalado e o aviso ligado.
               </p>
             </div>

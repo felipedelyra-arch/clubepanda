@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, updateDoc, where } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
 import { Plus, Pencil, Trash2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { db, storage, functions } from "../lib/firebase";
 import { useCollection } from "../lib/useCollection";
-import type { Reward, Redemption, RewardTipo } from "../lib/types";
+import { useContagem } from "../lib/useContagem";
+import type { Reward, RewardTipo } from "../lib/types";
 import {
   Card,
   Button,
@@ -31,7 +32,14 @@ function fmtPrazo(d?: Date | null): string {
 
 export function Rewards() {
   const { data, loading, error } = useCollection<Reward>("rewards");
-  const { data: redemptions } = useCollection<Redemption>("redemptions");
+  // Só o número interessa aqui. Baixar `redemptions` inteira para contar os
+  // pendentes era pagar uma leitura por resgate já feito no clube.
+  const pendentes = useContagem(
+    "redemptions",
+    () => [where("status", "==", "disponivel")],
+    "disponivel",
+    (r) => r.status === "disponivel"
+  );
   const [editando, setEditando] = useState<Partial<Reward> | null>(null);
   const [excluir, setExcluir] = useState<Reward | null>(null);
   const [arquivo, setArquivo] = useState<File | null>(null);
@@ -82,15 +90,13 @@ export function Rewards() {
   if (loading) return <Spinner />;
   if (error) return <ErrorState mensagem={error} />;
 
-  const pendentes = redemptions.filter((r) => r.status === "disponivel");
-
   return (
     <div>
       <PageHeader
         titulo="Premiações"
         descricao={
-          pendentes.length
-            ? `${pendentes.length} resgate(s) esperando validação no caixa`
+          pendentes
+            ? `${pendentes} resgate(s) esperando validação no caixa`
             : "Prêmios que o restaurante libera pros sócios"
         }
         acao={

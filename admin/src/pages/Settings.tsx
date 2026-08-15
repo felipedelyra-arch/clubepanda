@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, where, limit } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import {
   UserPlus,
@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { db, functions } from "../lib/firebase";
-import { useCollection, useDoc } from "../lib/useCollection";
+import { useCollectionQuery, useDoc } from "../lib/useCollection";
+import { useContagem } from "../lib/useContagem";
 import type { AppUser, Restaurante } from "../lib/types";
 import {
   Card,
@@ -136,7 +137,14 @@ function telefoneBonito(v: string): string | null {
 }
 
 export function Settings() {
-  const { data: users } = useCollection<AppUser>("users");
+  // Só os administradores, não o clube inteiro. São poucos por definição, e a
+  // tela não usa mais nada de `users`.
+  const { data: admins } = useCollectionQuery<AppUser>(
+    "users",
+    () => [where("role", "==", "admin"), limit(50)],
+    "admins",
+    50
+  );
   const { data: salvo, loading } = useDoc<Restaurante>("config/restaurante");
   const [form, setForm] = useState<Restaurante>(vazio);
   const [salvando, setSalvando] = useState(false);
@@ -147,8 +155,6 @@ export function Settings() {
   useEffect(() => {
     if (salvo) setForm({ ...vazio, ...salvo });
   }, [salvo]);
-
-  const admins = users.filter((u) => u.role === "admin");
 
   const pendentes = useMemo(
     () =>
@@ -392,11 +398,24 @@ export function Settings() {
  * quando não há mais ninguém pendente.
  */
 function CodigosSocio() {
-  const { data: users, loading } = useCollection<AppUser>("users");
   const [rodando, setRodando] = useState(false);
   const [progresso, setProgresso] = useState(0);
 
-  const pendentes = useMemo(() => users.filter((u) => !u.codigoSocio).length, [users]);
+  // Quantos ainda estão sem código, contado no servidor.
+  //
+  // Não dá para consultar campo AUSENTE, e é assim que `codigoSocio` fica em
+  // quem se cadastrou antes. O contorno: `codigoSocio >= ''` casa com qualquer
+  // texto, e documento sem o campo não entra no índice desse campo — então
+  // sobra exatamente quem tem código. Os pendentes são o total menos isso.
+  const total = useContagem("users", () => [], "todos");
+  const comCodigo = useContagem(
+    "users",
+    () => [where("codigoSocio", ">=", "")],
+    "com-codigo",
+    (u) => Boolean(u.codigoSocio)
+  );
+  const loading = total == null || comCodigo == null;
+  const pendentes = loading ? 0 : Math.max(0, total - comCodigo);
 
   /**
    * A função processa um pedaço por chamada e devolve `continua` + `cursor`

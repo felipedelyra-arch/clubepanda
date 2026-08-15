@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { Download, ChevronRight, Store, CreditCard, Plus } from "lucide-react";
-import { useCollection } from "../lib/useCollection";
-import type { AppUser, Payment } from "../lib/types";
+import {
+  where,
+  orderBy,
+  limit,
+  Timestamp,
+  type QueryConstraint,
+} from "firebase/firestore";
+import { useCollectionQuery } from "../lib/useCollection";
+import { useUsuariosPorId } from "../lib/useUsuariosPorId";
+import type { Payment } from "../lib/types";
 import {
   Card,
   Badge,
@@ -44,35 +52,54 @@ function descricaoCurta(p: Payment): string {
   return partes.join(" · ");
 }
 
+/** Teto de cobranças carregadas por vez. Acima disso a tela avisa. */
+const TETO = 1000;
+
 export function Payments() {
-  const { data, loading, error } = useCollection<Payment>("payments");
-  const { data: users } = useCollection<AppUser>("users");
   const [periodo, setPeriodo] = useState<Periodo>("30");
   const [tipo, setTipo] = useState<Tipo>("todos");
   const [metodo, setMetodo] = useState<Metodo>("todos");
   const [aberto, setAberto] = useState<Payment | null>(null);
   const [lancando, setLancando] = useState(false);
 
-  // O documento de pagamento só guarda o uid; o resto vem da coleção de users.
-  const porUid = useMemo(() => {
-    const m = new Map<string, AppUser>();
-    users.forEach((u) => m.set(u.uid, u));
-    return m;
-  }, [users]);
+  // O período vai para a CONSULTA, não para o filtro em memória. Antes a tela
+  // baixava `payments` inteira e descartava o que estava fora da janela — e
+  // essa coleção ganha um documento a cada conta fechada no salão, para
+  // sempre. "Últimos 30 dias" agora custa 30 dias de dados.
+  const { data, loading, error, truncado } = useCollectionQuery<Payment>(
+    "payments",
+    () => {
+      const cs: QueryConstraint[] = [];
+      if (periodo !== "tudo") {
+        cs.push(
+          where(
+            "data",
+            ">=",
+            Timestamp.fromMillis(Date.now() - Number(periodo) * 24 * 60 * 60 * 1000)
+          )
+        );
+      }
+      cs.push(orderBy("data", "desc"), limit(TETO));
+      return cs;
+    },
+    periodo,
+    TETO
+  );
+
+  // Só os sócios que aparecem nesta página, buscados por id. A tela lia `users`
+  // inteira para resolver nome e e-mail — 5.000 leituras para exibir 50 linhas.
+  const uids = useMemo(() => data.map((p) => p.userId), [data]);
+  const porUid = useUsuariosPorId(uids);
 
   const nome = (uid: string) => porUid.get(uid)?.nome || porUid.get(uid)?.email || `${uid.slice(0, 10)}…`;
 
+  // Tipo e método seguem em memória: são poucos valores possíveis, e filtrar no
+  // servidor exigiria um índice composto por combinação.
   const filtrados = useMemo(() => {
-    const corte =
-      periodo === "tudo"
-        ? null
-        : new Date(Date.now() - Number(periodo) * 24 * 60 * 60 * 1000);
     return data
-      .filter((p) => (metodo === "todos" || p.metodo === metodo))
-      .filter((p) => tipo === "todos" || tipoDe(p) === tipo)
-      .filter((p) => !corte || (p.data ? p.data >= corte : false))
-      .sort((a, b) => (b.data?.getTime() ?? 0) - (a.data?.getTime() ?? 0));
-  }, [data, metodo, tipo, periodo]);
+      .filter((p) => metodo === "todos" || p.metodo === metodo)
+      .filter((p) => tipo === "todos" || tipoDe(p) === tipo);
+  }, [data, metodo, tipo]);
 
   const resumo = useMemo(() => {
     const ok = filtrados.filter(aprovado);
@@ -144,6 +171,18 @@ export function Payments() {
       />
 
       <LancarConsumo open={lancando} onClose={() => setLancando(false)} />
+
+      {/* A lista tem teto. Sem este aviso, os totais abaixo pareceriam o
+          período inteiro quando são só as mais recentes — e o dono fecharia o
+          mês com número menor que a verdade, sem nada indicando isso. */}
+      {truncado && (
+        <div className="mb-4 rounded-xl border border-marca/40 bg-marca/10 px-4 py-3 text-sm text-tinta">
+          Mostrando as <strong>{TETO.toLocaleString("pt-BR")}</strong> cobranças
+          mais recentes deste período — há mais além disso, e os totais abaixo
+          contam só o que está na lista. Escolha um período menor para fechar a
+          conta certa.
+        </div>
+      )}
 
       {/* Filtros numa fita só, acima dos números: mudar o filtro muda o que os
           números contam, então eles precisam estar à vista juntos. */}

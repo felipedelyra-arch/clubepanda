@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Search } from "lucide-react";
 import { useCollection } from "../lib/useCollection";
-import type { AppUser, Payment, Plan, Redemption, Subscription } from "../lib/types";
+import { useFichaDoSocio } from "../lib/useFichaDoSocio";
+import type { AppUser, Plan, Subscription } from "../lib/types";
 import {
   Card,
   Badge,
@@ -15,13 +16,25 @@ import { Modal } from "../components/Modal";
 import { brl, dia, metodoLabel } from "../lib/format";
 
 export function Members() {
+  // `users` e `subscriptions` seguem inteiras: a lista É a tela, e o tamanho
+  // delas é o número de sócios do clube — cresce com o negócio, não com o
+  // tempo. `plans` são três documentos.
+  //
+  // ⚠️ Quando o clube passar de alguns milhares, esta tela precisa de busca no
+  // servidor (campo `nomeBusca` em minúsculas + consulta por prefixo) e
+  // paginação. Fica registrado aqui porque o dia em que doer não vai ter aviso.
   const { data: users, loading, error } = useCollection<AppUser>("users");
   const { data: subs } = useCollection<Subscription>("subscriptions");
   const { data: plans } = useCollection<Plan>("plans");
-  const { data: payments } = useCollection<Payment>("payments");
-  const { data: redemptions } = useCollection<Redemption>("redemptions");
   const [busca, setBusca] = useState("");
   const [aberto, setAberto] = useState<AppUser | null>(null);
+
+  // Cobranças e resgates do sócio só são buscados quando a ficha abre. Antes
+  // esta tela baixava as duas coleções INTEIRAS para filtrar em memória as
+  // poucas linhas de quem o dono clicou.
+  const { pagamentos: pagamentosDele, resgates: resgatesDele } = useFichaDoSocio(
+    aberto?.uid ?? null
+  );
 
   const subByUser = useMemo(() => {
     const m = new Map<string, Subscription>();
@@ -45,16 +58,6 @@ export function Members() {
 
   const sub = aberto ? subByUser.get(aberto.uid) : undefined;
   const plano = sub ? planoPorId.get(sub.planId) : undefined;
-  const pagamentosDele = aberto
-    ? payments
-        .filter((p) => p.userId === aberto.uid)
-        .sort((a, b) => (b.data?.getTime() ?? 0) - (a.data?.getTime() ?? 0))
-    : [];
-  const resgatesDele = aberto
-    ? redemptions
-        .filter((r) => r.userId === aberto.uid)
-        .sort((a, b) => (b.criadoEm?.getTime() ?? 0) - (a.criadoEm?.getTime() ?? 0))
-    : [];
 
   if (loading) return <Spinner />;
   if (error) return <ErrorState mensagem={error} />;
