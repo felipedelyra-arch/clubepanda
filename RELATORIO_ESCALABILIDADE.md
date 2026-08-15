@@ -443,3 +443,106 @@ página e num botão "Atualizar" ao lado do título. O bloco "No ar agora"
   `firebase deploy --only firestore:indexes` antes do painel ir a produção.
 - **Nada disso está no ar.** Continua valendo: sem Blaze, as 7 funções não
   existem em produção.
+
+---
+
+## 11. Onda 2 — executada (15/08/2026)
+
+### 11.1 O P0: resgate saiu da fila de um documento só
+
+O estoque virou **um documento por unidade** em `rewards/{id}/cupons/{i}`, e
+resgatar é reservar um deles. Escolhi cupons em vez de contador repartido
+porque o contador tem o problema de "o pedaço que sorteei está vazio mas ainda
+há estoque"; com cupom, ocupado é só outro sorteio.
+
+Cada cupom carrega um número aleatório `sorte`, e a reserva sorteia um ponto do
+pool. Sem isso, `where(status == livre).limit(N)` devolveria sempre os mesmos
+primeiros cupons e a fila voltaria em outro lugar — foi exatamente o que
+aconteceu na primeira versão (17% ainda falhava a 200 simultâneos).
+
+| Simultâneos | Antes | Depois |
+|---:|---|---|
+| 50 | 19/50 (62% falha) | **50/50 (0%)** |
+| 200 | 8/200 (96% falha) | **200/200 (0%)** |
+| Vazão a 200 | 0,3 resgates/s | **40,9 resgates/s** |
+| p50 a 200 | 19.649 ms | **1.637 ms** |
+
+### 11.2 Idempotência
+
+O id do resgate virou `{rewardId}__{uid}`. Isso substitui a consulta que rodava
+dentro da transação e resolve dois problemas: "um por pessoa" vira propriedade
+do banco, e **repetir a chamada ficou seguro**. A rede caindo depois de gravar
+deixava o sócio vendo "Não foi possível resgatar", e tocar de novo devolvia
+"Você já resgatou este prêmio" — erro para uma operação que deu certo. Agora a
+segunda chamada devolve o mesmo código.
+
+### 11.3 Resiliência no app
+
+`app/lib/core/services/chamada.dart`: retentativa com espera dobrando (400/800/
+1600 ms) mais sorteio, só para erros passageiros. O sorteio existe porque, sem
+ele, todo mundo que perdeu a conexão junto — Wi-Fi do salão caindo — tentaria
+de novo no mesmo instante.
+
+`repetir` é **`false` por padrão**: marcar como repetível é afirmar que a função
+é idempotente, e isso tem que ser decisão consciente por chamada.
+
+| Chamada | Repete? | Por quê |
+|---|---|---|
+| `redeemReward` | sim | id determinístico |
+| `deleteAccount` | sim | grava progresso e retoma |
+| `cancelSubscription` | sim | repetir dá o mesmo estado |
+| `applyReferral` | sim | 2ª aplicação é recusada |
+| `ensureReferralCode` | sim | devolve o código existente |
+| `createCheckoutSession` | **não** | criaria duas sessões no Stripe |
+
+As mensagens passaram a separar "sem internet" de "servidor recusou", e a dizer
+o que **não** aconteceu ("A assinatura NÃO foi cancelada"), porque quem fecha o
+app achando que cancelou só descobre na próxima fatura.
+
+### 11.4 Outros itens fechados
+
+- **`deleteAccount` retomável.** Sete etapas em quatro sistemas, sem transação
+  que as cubra. Cada etapa concluída é gravada em `exclusoes/{uid}`, e
+  `finalizarExclusoes` varre diariamente o que ficou pelo caminho — inclusive o
+  caso em que a última etapa falha e o sócio já não tem login para pedir de novo.
+- **Faxina da central de avisos** (`limparAvisosAntigos`, 180 dias). O
+  `limit(50)` resolvia o custo de ler; o banco continuava engordando.
+- **Stripe: chave de idempotência na criação do customer.** Dois toques em
+  "assinar" podiam criar dois clientes para a mesma pessoa, dividindo o
+  histórico de cobrança entre os dois.
+
+### 11.5 Verificação
+
+Tudo contra os emuladores, com script que fica no repo:
+
+| Suíte | Cobre |
+|---|---|
+| `firebase/test/rules.test.js` | 23/23 — inclui cupons e `exclusoes` fechados |
+| `loadtest/verificar-resgate.js` | 60 pessoas para 20 cupons: exatamente 20 resgatam; repetição devolve o mesmo código; dono baixando estoque não toca nos usados |
+| `loadtest/verificar-exclusao.js` | conta com 600 avisos e 550 resgates apagada sem resíduo; parada na etapa 3 retomada; repetir não estoura |
+| `loadtest/verificar-faxina.js` | apaga só o que passou do corte, em todos os sócios |
+| `loadtest/verificar-backfill.js` | 600 perfis, ninguém pulado |
+| `loadtest/verificar-dashboard.js` | agregação bate com a soma antiga, campo a campo |
+
+Um bug foi pego antes de qualquer deploy: a primeira versão dos cupons
+numerava os documentos e precisava do último id via
+`orderBy('__name__','desc')`, que o Firestore recusa com
+`FAILED_PRECONDITION: Firestore does not support descending key scans`.
+
+### 11.6 Antes de publicar
+
+```
+firebase deploy --only firestore:indexes
+```
+
+Índices novos: `payments` (status, data), `cupons` (status, sorte) nas duas
+direções, e `notifications` por `criadoEm` em escopo COLLECTION_GROUP.
+
+### 11.7 Ainda aberto
+
+- **Fila persistente em disco** para chamadas de função. Hoje há retentativa,
+  não fila: fechar o app no meio ainda perde a tentativa. Só vale a pena depois
+  que todas as funções de escrita forem idempotentes — hoje `redeemReward` e
+  `deleteAccount` são.
+- **Membros** (painel) ainda carrega `users` e `subscriptions` inteiras.
+- **Blaze.** Nada disso está em produção.
