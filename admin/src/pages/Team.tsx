@@ -35,12 +35,22 @@ const vazio: Partial<Funcionario> = {
 /** Formato de chave aleatória do Pix (UUID v4). */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Diagnostico = { tipo: "ok" | "aviso"; texto: string } | null;
+type Diagnostico = {
+  tipo: "ok" | "aviso" | "bloqueio";
+  texto: string;
+} | null;
 
 /**
- * Classifica a chave digitada. Não bloqueia nada — o dono manda no cadastro —
- * mas chave que é CPF ou telefone vira dado pessoal exposto pra clientela
- * inteira, e ele precisa saber disso antes de salvar, não depois.
+ * Classifica a chave digitada.
+ *
+ * CPF e telefone são **bloqueados**: a chave fica legível pra qualquer sócio
+ * logado (é o que faz a gorjeta funcionar), então salvar um desses publica o
+ * documento ou o número pessoal do funcionário pra clientela inteira. Antes
+ * isto era só um aviso em vermelho e salvava do mesmo jeito; a auditoria de
+ * 15/08 mostrou que ninguém estava protegido de fato.
+ *
+ * E-mail e CNPJ continuam passando com aviso: expõem menos, e às vezes são o
+ * único Pix que a pessoa tem.
  */
 function diagnosticar(chave: string): Diagnostico {
   const v = chave.trim();
@@ -57,7 +67,7 @@ function diagnosticar(chave: string): Diagnostico {
   const digitos = v.replace(/\D/g, "");
   if (digitos.length === 11 && digitos === v.replace(/[.\-\s]/g, "")) {
     return {
-      tipo: "aviso",
+      tipo: "bloqueio",
       texto:
         "Parece CPF ou telefone. Isso expõe um dado pessoal do funcionário " +
         "pra todos os clientes — peça uma chave aleatória no app do banco.",
@@ -68,9 +78,10 @@ function diagnosticar(chave: string): Diagnostico {
   }
   if (digitos.length >= 12 && digitos.length <= 13) {
     return {
-      tipo: "aviso",
+      tipo: "bloqueio",
       texto:
-        "Parece telefone. Fica visível pros clientes — prefira chave aleatória.",
+        "Parece telefone. Fica visível pros clientes — peça uma chave " +
+        "aleatória no app do banco.",
     };
   }
   return null;
@@ -86,6 +97,8 @@ export function Team() {
   async function salvar() {
     if (!editando?.nome?.trim()) return toast.error("Informe o nome.");
     if (!editando?.chavePix?.trim()) return toast.error("Informe a chave Pix.");
+    // Chave que é dado pessoal não passa: ela fica visível pra todo sócio.
+    if (diag?.tipo === "bloqueio") return toast.error(diag.texto);
     if (demoBlock("Funcionário não salvo")) return setEditando(null);
 
     const payload = {
@@ -185,7 +198,9 @@ export function Team() {
                 <p className="mt-3 truncate font-mono text-xs text-tinta-3" title={f.chavePix}>
                   {f.chavePix}
                 </p>
-                {d?.tipo === "aviso" && (
+                {/* Cadastro antigo pode ter chave que hoje não passaria mais:
+                    a trava vale na hora de salvar, não apaga o que já existe. */}
+                {(d?.tipo === "aviso" || d?.tipo === "bloqueio") && (
                   <p className="mt-1 flex gap-1 text-xs text-panda-vermelho">
                     <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                     {d.texto}
@@ -264,7 +279,13 @@ export function Team() {
                 label="Aparece na lista de gorjeta do app"
               />
             </div>
-            <Button onClick={salvar} className="mt-1 w-full">
+            {/* Desabilitado já diz que não vai passar, sem precisar tentar.
+                `salvar()` recusa de novo por baixo — a trava é lá, não aqui. */}
+            <Button
+              onClick={salvar}
+              disabled={diag?.tipo === "bloqueio"}
+              className="mt-1 w-full"
+            >
               Salvar
             </Button>
           </>
