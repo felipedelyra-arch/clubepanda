@@ -41,13 +41,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         .doc(auth.uid)
         .collection('notifications');
     try {
-      final naoLidas = await col.where('lida', isEqualTo: false).get();
-      if (naoLidas.docs.isEmpty) return;
-      final batch = ref.read(firestoreProvider).batch();
-      for (final d in naoLidas.docs) {
-        batch.update(d.reference, {'lida': true});
+      // Em lotes: um batch do Firestore aceita no máximo 500 operações, e a
+      // subcoleção não tem teto — um sócio que ficou meses sem abrir o app
+      // acumula mais que isso e o batch único falhava inteiro, deixando tudo
+      // como não lido.
+      while (true) {
+        final naoLidas =
+            await col.where('lida', isEqualTo: false).limit(450).get();
+        if (naoLidas.docs.isEmpty) return;
+        final batch = ref.read(firestoreProvider).batch();
+        for (final d in naoLidas.docs) {
+          batch.update(d.reference, {'lida': true});
+        }
+        await batch.commit();
+        if (naoLidas.docs.length < 450) return;
       }
-      await batch.commit();
     } catch (_) {
       // Silencioso: marcar como lida é secundário; não atrapalha a leitura.
     }

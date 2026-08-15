@@ -18,6 +18,9 @@ const { db, exigirEmulador, cronometrar, ms } = require("./lib");
 const AVISOS = Number(process.argv[2] || 300);
 const UID = "u0000000";
 
+/** Espelha `kLimiteAvisos` de app/lib/core/services/services.dart. */
+const LIMITE_AVISOS = 50;
+
 // Leituras fixas por abertura, das coleções compartilhadas (services.dart).
 const COMPARTILHADAS = ["promotions", "rewards", "menu", "plans", "funcionarios"];
 
@@ -72,15 +75,16 @@ async function main() {
       detalhe.push([col, snap.size]);
     }
 
-    // notificationsProvider (services.dart:173) — SEM limit
+    // notificationsProvider (services.dart) — agora com limit(kLimiteAvisos)
     const notif = await db
       .collection("users")
       .doc(UID)
       .collection("notifications")
       .orderBy("criadoEm", "desc")
+      .limit(LIMITE_AVISOS)
       .get();
     leituras += notif.size;
-    detalhe.push(["notifications (SEM limit)", notif.size]);
+    detalhe.push([`notifications (limit ${LIMITE_AVISOS})`, notif.size]);
 
     // redemptionsProvider (services.dart:193) — SEM limit
     const resg = await db

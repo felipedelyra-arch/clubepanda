@@ -169,6 +169,15 @@ final isSubscriberProvider = Provider<bool>((ref) {
   return ref.watch(subscriptionProvider).value?.ativa ?? false;
 });
 
+/// Quantos avisos a central carrega de uma vez.
+///
+/// A subcoleção cresce **para sempre**: cada push que o dono manda grava um
+/// documento por sócio, e nada apaga. Sem teto, abrir o app passava a custar
+/// uma leitura por aviso já recebido na vida — medido em 307 leituras por
+/// abertura num sócio com 300 avisos, contra 19 num sócio novo. Ninguém rola
+/// dois anos de histórico; quem quiser o resto tem o botão no fim da lista.
+const kLimiteAvisos = 50;
+
 /// Notificações do usuário (central de avisos), mais recentes primeiro.
 final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
   final auth = ref.watch(authStateProvider).value;
@@ -179,17 +188,30 @@ final notificationsProvider = StreamProvider<List<AppNotification>>((ref) {
       .doc(auth.uid)
       .collection('notifications')
       .orderBy('criadoEm', descending: true)
+      .limit(kLimiteAvisos)
       .snapshots()
       .map((s) => s.docs.map(AppNotification.fromDoc).toList());
 });
 
 /// Quantidade de notificações não lidas (badge do sino).
+///
+/// Conta dentro dos [kLimiteAvisos] carregados. Passar disso exigiria uma
+/// consulta de contagem separada, e o badge é decoração: quem tem mais de 50
+/// avisos não lidos já entendeu o recado.
 final unreadCountProvider = Provider<int>((ref) {
   final list = ref.watch(notificationsProvider).value ?? const [];
   return list.where((n) => !n.lida).length;
 });
 
 /// Resgates do usuário.
+///
+/// Sem `limit` **de propósito**, ao contrário da central de avisos. Dois
+/// motivos: `redeemReward` só deixa resgatar cada prêmio uma vez, então o
+/// tamanho da lista é o número de prêmios que o dono já cadastrou na vida (não
+/// cresce por uso); e [economiaProvider] soma esta lista inteira pra dizer
+/// quanto o sócio já economizou — cortar aqui faria o app mostrar um número
+/// menor do que a verdade, em silêncio. Se um dia isso pesar, o caminho é
+/// guardar o total acumulado no doc do sócio, não limitar a consulta.
 final redemptionsProvider = StreamProvider<List<Redemption>>((ref) {
   final auth = ref.watch(authStateProvider).value;
   if (auth == null) return Stream.value(const []);
