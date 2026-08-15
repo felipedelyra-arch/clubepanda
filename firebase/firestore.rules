@@ -166,6 +166,15 @@ service cloud.firestore {
       allow read, write: if false; // apenas Cloud Functions
     }
 
+    // ---- exclusoes ----
+    // Controle de progresso da exclusão de conta (functions/src/account.ts).
+    // Guarda em que etapa cada pedido parou, para poder retomar. Fechado até
+    // para o dono do uid: o documento sobrevive de propósito ao perfil, e o
+    // conteúdo é operacional, não é dado que o sócio precise ver.
+    match /exclusoes/{uid} {
+      allow read, write: if false; // apenas Cloud Functions
+    }
+
     // ---- notificationLogs ----
     // Histórico de avisos enviados, mostrado na tela de Notificações do painel.
     // Só admin lê; quem escreve é a function que dispara o aviso.

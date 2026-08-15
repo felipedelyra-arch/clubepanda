@@ -9,7 +9,7 @@ setGlobalOptions({ region: "southamerica-east1", maxInstances: 10 });
 // Auth / admin
 export { setAdminRole } from "./admin";
 export { onAuthUserCreate, backfillCodigosSocio } from "./users";
-export { deleteAccount } from "./account";
+export { deleteAccount, finalizarExclusoes } from "./account";
 export { ensureReferralCode, applyReferral } from "./referral";
 
 // Assinatura (Stripe)

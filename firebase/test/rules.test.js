@@ -283,6 +283,33 @@ describe("outras coleções", () => {
     await assertFails(getDoc(doc(eu(), "referralCodes", "XYZ123")));
   });
 
+  test("cupons de um prêmio são invisíveis ao cliente e ao admin", async () => {
+    // O estoque virou um documento por unidade (functions/src/lib/cupons.ts).
+    // Quem reserva é a Cloud Function; abrir a subcoleção entregaria a lista de
+    // quem resgatou o quê, que é dado de outro sócio.
+    await semRegras(async (db) => {
+      await setDoc(doc(db, "rewards", "rw1"), { titulo: "Rodízio", estoque: 5 });
+      await setDoc(doc(db, "rewards", "rw1", "cupons", "c1"), {
+        status: "usado",
+        userId: OUTRO,
+      });
+    });
+    // O prêmio em si continua legível — é a vitrine.
+    await assertSucceeds(getDoc(doc(eu(), "rewards", "rw1")));
+    await assertFails(getDoc(doc(eu(), "rewards", "rw1", "cupons", "c1")));
+    await assertFails(getDoc(doc(admin(), "rewards", "rw1", "cupons", "c1")));
+    await assertFails(
+      setDoc(doc(eu(), "rewards", "rw1", "cupons", "c2"), { status: "livre" })
+    );
+  });
+
+  test("controle de exclusão de conta é fechado até para o próprio uid", async () => {
+    await semRegras((db) => setDoc(doc(db, "exclusoes", UID), { uid: UID, etapa: 3 }));
+    await assertFails(getDoc(doc(eu(), "exclusoes", UID)));
+    await assertFails(getDoc(doc(admin(), "exclusoes", UID)));
+    await assertFails(setDoc(doc(eu(), "exclusoes", UID), { etapa: 7 }));
+  });
+
   test("notificationLogs: só admin lê", async () => {
     await semRegras((db) => setDoc(doc(db, "notificationLogs", "l1"), { enviados: 5 }));
     await assertFails(getDoc(doc(eu(), "notificationLogs", "l1")));
