@@ -14,6 +14,7 @@ import {
 import { Megaphone, Gift, ArrowRight, Plus } from "lucide-react";
 import { useCollection } from "../lib/useCollection";
 import { useAgora } from "../lib/useAgora";
+import { useDashboardStats } from "../lib/useDashboardStats";
 import {
   Card,
   Spinner,
@@ -26,21 +27,12 @@ import {
   LiveDot,
   Button,
 } from "../components/ui";
-import type {
-  AppUser,
-  Subscription,
-  Payment,
-  Redemption,
-  Promotion,
-  Reward,
-} from "../lib/types";
+import type { Promotion, Reward } from "../lib/types";
 import { brl } from "../lib/format";
 import { statusOferta, restanteTexto, quandoTexto } from "../lib/oferta";
 
-const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-/** Chave ano-mês. Comparar só o mês somaria jan/2025 com jan/2026. */
-const chaveMes = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
+// A janela de 6 meses e os rótulos moram em lib/useDashboardStats.ts, junto com
+// as consultas que os alimentam.
 
 // ---------------------------------------------------------------------------
 // "No ar agora" — a assinatura da tela.
@@ -245,69 +237,18 @@ const eixo = {
 
 export function Dashboard() {
   const agora = useAgora();
-  const { data: users, loading: lu, error: eu } = useCollection<AppUser>("users");
-  const { data: subs, error: es } = useCollection<Subscription>("subscriptions");
-  const { data: payments, error: ep } = useCollection<Payment>("payments");
-  const { data: redemptions, error: er } = useCollection<Redemption>("redemptions");
+  // Os totais vêm de consultas de agregação, calculadas no servidor. Baixar
+  // `users` + `subscriptions` + `payments` + `redemptions` inteiras só pra
+  // somar custava 17.531 documentos por abertura, e `payments` cresce a cada
+  // conta fechada no salão. Ver lib/useDashboardStats.ts.
+  const { data: stats, loading: lu, error: eu, recarregar } = useDashboardStats(agora);
+  // Estes dois seguem ao vivo: são listas curtas, e é delas que sai o "no ar
+  // agora" das ofertas.
   const { data: promocoes } = useCollection<Promotion>("promotions");
   const { data: premios } = useCollection<Reward>("rewards");
-  const erro = eu || es || ep || er;
+  const erro = eu;
 
-  const stats = useMemo(() => {
-    const now = new Date();
-    const mesPassado = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const ativos = subs.filter((s) => s.status === "active");
-    const cancelados = subs.filter((s) => s.status === "canceled");
-    const novosMes = users.filter(
-      (u) => u.criadoEm && chaveMes(u.criadoEm) === chaveMes(now)
-    );
-
-    const somaDoMes = (chave: string) =>
-      payments
-        .filter((p) => p.data && chaveMes(p.data) === chave && p.status === "aprovado")
-        .reduce((a, p) => a + (p.valor || 0), 0);
-
-    const mrr = somaDoMes(chaveMes(now));
-    const mrrAnterior = somaDoMes(chaveMes(mesPassado));
-
-    // Janela móvel dos últimos 6 meses, terminando no mês atual.
-    const janela = Array.from({ length: 6 }, (_, k) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (5 - k), 1);
-      const outroAno = d.getFullYear() !== now.getFullYear();
-      return {
-        chave: chaveMes(d),
-        // Vira do ano: rotula "Dez/25" pra não parecer o dezembro deste ano.
-        rotulo: meses[d.getMonth()] + (outroAno ? `/${String(d.getFullYear()).slice(2)}` : ""),
-        // Último instante do mês, pro acumulado de membros.
-        fim: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999),
-      };
-    });
-
-    const receita = janela.map((j) => ({ mes: j.rotulo, valor: somaDoMes(j.chave) }));
-
-    // Acumulado: quantos membros existiam no fim de cada mês da janela.
-    const crescimento = janela.map((j) => ({
-      mes: j.rotulo,
-      membros: users.filter((u) => u.criadoEm && u.criadoEm <= j.fim).length,
-    }));
-
-    const pendentes = redemptions.filter((r) => r.status === "disponivel").length;
-
-    return {
-      ativos: ativos.length,
-      cadastrados: users.filter((u) => u.role !== "admin").length,
-      novosMes: novosMes.length,
-      mrr,
-      mrrAnterior,
-      cancelados: cancelados.length,
-      pendentes,
-      resgates: redemptions.length,
-      receita,
-      crescimento,
-    };
-  }, [users, subs, payments, redemptions]);
-
-  if (lu) return <Spinner />;
+  if (lu || !stats) return <Spinner />;
 
   // Comparação em reais, não em porcentagem: com base pequena o percentual vira
   // "+11964%", que é verdade e não ajuda ninguém a decidir nada.
@@ -335,7 +276,16 @@ export function Dashboard() {
       )}
 
       <section className="mb-6 sm:mb-8">
-        <SectionTitle>Números do mês</SectionTitle>
+        <div className="flex items-center justify-between gap-3">
+          <SectionTitle>Números do mês</SectionTitle>
+          {/* Estes números são consulta pontual, não tempo real — somar no
+              servidor é o que evita baixar a base inteira a cada abertura.
+              O botão é como o dono pede a conta de novo sem recarregar a
+              página. */}
+          <Button variant="ghost" size="sm" onClick={() => void recarregar()}>
+            Atualizar
+          </Button>
+        </div>
         <StatRail>
           <Stat
             rotulo="Recebido no mês"
