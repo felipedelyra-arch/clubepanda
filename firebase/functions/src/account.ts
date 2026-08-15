@@ -30,12 +30,20 @@ export const deleteAccount = onCall(async (req) => {
   }
 
   // 2. Apaga os documentos do usuário.
+  //
+  // Em voltas de 450: um batch do Firestore aceita 500 operações e estoura
+  // inteiro se passar. Com um único batch, a conta de um sócio antigo (muitos
+  // resgates) falhava no meio da exclusão — e exclusão pela metade é o pior
+  // lugar para parar, porque é exigência de LGPD e das lojas.
   const apagarEmLote = async (query: Query) => {
-    const snap = await query.get();
-    if (snap.empty) return;
-    const batch = db.batch();
-    snap.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
+    for (;;) {
+      const snap = await query.limit(450).get();
+      if (snap.empty) return;
+      const batch = db.batch();
+      snap.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+      if (snap.size < 450) return;
+    }
   };
   await apagarEmLote(db.collection("subscriptions").where("userId", "==", uid));
   await apagarEmLote(db.collection("redemptions").where("userId", "==", uid));
