@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
 import '../../core/services/chamada.dart';
+import '../../core/services/fila_pendentes.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/widgets/panda_logo.dart';
@@ -149,11 +150,20 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             repetir: true,
           );
         } catch (e) {
-          avisoIndicacao = e is FirebaseFunctionsException &&
-                  (e.code == 'not-found' || e.code == 'already-exists')
-              ? (e.message ?? 'Código de indicação não aplicado.')
-              : 'Sua conta foi criada, mas o código de indicação não foi '
-                  'aplicado. Você pode informá-lo depois em Perfil.';
+          final recusado = e is FirebaseFunctionsException &&
+              (e.code == 'not-found' || e.code == 'already-exists');
+          if (recusado) {
+            // O servidor respondeu que o código não vale: repetir não muda.
+            avisoIndicacao = e.message ?? 'Código de indicação não aplicado.';
+          } else {
+            // Falha de conexão: guarda em disco e aplica quando a rede voltar.
+            await ref
+                .read(filaPendentesProvider.notifier)
+                .enfileirar('applyReferral', dados: {'code': codigo});
+            avisoIndicacao =
+                'Sem conexão para aplicar o código de indicação agora. '
+                'Ele ficou guardado e será aplicado sozinho.';
+          }
         }
       }
 

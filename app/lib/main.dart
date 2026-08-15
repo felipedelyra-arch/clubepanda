@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/push_service.dart';
+import 'core/services/fila_pendentes.dart';
 import 'core/connectivity.dart';
 import 'core/version_gate.dart';
 import 'core/demo.dart';
@@ -103,6 +104,11 @@ class ClubePandaApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (!kDemo) {
       ref.watch(pushServiceProvider); // liga o FCM ao logar
+      // Liga a fila de chamadas pendentes. Precisa ser observada aqui: o
+      // provider é preguiçoso, e sem alguém olhando ele só nasceria quando
+      // alguma tela enfileirasse algo — ou seja, nunca drenaria o que ficou da
+      // sessão anterior.
+      ref.watch(filaPendentesProvider);
     }
     final router = ref.watch(routerProvider);
     final textScale = ref.watch(textScaleProvider);

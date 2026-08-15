@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/services/services.dart';
 import '../../core/services/chamada.dart';
+import '../../core/services/fila_pendentes.dart';
 import '../../core/demo.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/dimens.dart';
@@ -624,11 +625,20 @@ class _AssinaturaAtiva extends ConsumerWidget {
         );
       }
     } catch (e) {
+      // Não deu agora: entra na fila em disco e sai sozinho quando a rede
+      // voltar. É o caso onde perder a ação custa dinheiro de verdade — o
+      // sócio fecha o app achando que cancelou e é cobrado de novo no mês
+      // seguinte.
+      await ref
+          .read(filaPendentesProvider.notifier)
+          .enfileirar('cancelSubscription');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 6),
             content: Text(
-              mensagemDeErro(e, acaoFalhou: 'A assinatura NÃO foi cancelada'),
+              'Sem conexão agora. O cancelamento ficou guardado e será '
+              'concluído assim que a internet voltar — não precisa fazer de novo.',
             ),
           ),
         );

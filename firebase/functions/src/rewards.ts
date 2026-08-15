@@ -1,4 +1,5 @@
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions";
 import { db } from "./lib/admin";
 import { sincronizarPool, contarLivres } from "./lib/cupons";
@@ -77,5 +78,45 @@ export const estoqueDoPremio = onDocumentWritten(
     if (!(await premio.get()).exists) return; // prêmio apagado no meio
 
     await premio.set({ estoque: await contarLivres(rewardId) }, { merge: true });
+  }
+);
+
+/**
+ * Confere o `estoque` de todos os prêmios e corrige o que estiver errado.
+ *
+ * É a rede de segurança do gatilho acima, e existe por um motivo concreto:
+ * numa rajada de resgates, dezenas de entregas do gatilho escrevem o MESMO
+ * documento de prêmio quase ao mesmo tempo. Parte dessas escritas falha por
+ * disputa — e gatilho do Firestore, por padrão, **não tenta de novo**. Enquanto
+ * os resgates continuam, o próximo conserta; quando a rajada acaba, o último
+ * número errado fica.
+ *
+ * O efeito é só o número na tela: um prêmio aparecer como esgotado sem estar
+ * (aí ninguém resgata algo que existe), ou o contrário (aí a pessoa toca e
+ * recebe "Sem estoque"). O resgate em si nunca erra — quem manda é o cupom, e
+ * ele é um documento por unidade.
+ *
+ * A cada 6 horas é frequente o bastante: a divergência só nasce em rajada, e
+ * rajada acontece quando o dono dispara um prêmio novo.
+ */
+export const conferirEstoques = onSchedule(
+  { schedule: "every 6 hours", timeZone: "America/Sao_Paulo" },
+  async () => {
+    // A coleção de prêmios é pequena por natureza — um restaurante tem punhado.
+    const premios = await db.collection("rewards").select("estoque").get();
+
+    const corrigidos: { id: string; de: number; para: number }[] = [];
+    for (const doc of premios.docs) {
+      const real = await contarLivres(doc.id);
+      const mostrado = Number(doc.get("estoque") ?? 0);
+      if (real === mostrado) continue;
+
+      await doc.ref.set({ estoque: real }, { merge: true });
+      corrigidos.push({ id: doc.id, de: mostrado, para: real });
+    }
+
+    if (corrigidos.length) {
+      logger.warn("Estoque divergente corrigido.", { corrigidos });
+    }
   }
 );

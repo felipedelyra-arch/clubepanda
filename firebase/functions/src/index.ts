@@ -17,7 +17,7 @@ export { createCheckoutSession, cancelSubscription } from "./subscriptions";
 
 // Premiações
 export { redeemReward, validateRedemption } from "./redemptions";
-export { sincronizarCupons, estoqueDoPremio } from "./rewards";
+export { sincronizarCupons, estoqueDoPremio, conferirEstoques } from "./rewards";
 
 // Push (FCM) + central de avisos do app
 export {

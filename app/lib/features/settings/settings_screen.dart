@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/services.dart';
 import '../../core/services/chamada.dart';
+import '../../core/services/fila_pendentes.dart';
 import '../../core/services/push_service.dart';
 import '../../core/demo.dart';
 import '../../core/restaurante.dart';
@@ -63,6 +64,9 @@ class SettingsScreen extends ConsumerWidget {
             return ListView(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
               children: escalonar([
+                // Fica no topo quando existe: é a única tela onde o sócio
+                // descobre que algo pedido por ele não chegou ao servidor.
+                const _NaoEnviados(),
                 const SectionLabel('Aparência'),
                 const Padding(
                   padding: EdgeInsets.only(top: 12),
@@ -1045,6 +1049,96 @@ class _TermosSheet extends ConsumerWidget {
                 OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Ações que o sócio pediu e não chegaram ao servidor.
+///
+/// Some da tela quando não há nenhuma. Existe porque a alternativa — descartar
+/// em silêncio o que esgotou as tentativas — é justamente o que faz a pessoa
+/// descobrir na fatura que o cancelamento nunca aconteceu.
+class _NaoEnviados extends ConsumerWidget {
+  const _NaoEnviados();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final itens = ref.watch(naoEnviadosProvider);
+    if (itens.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 28),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: PandaColors.laranjaSuave,
+          borderRadius: PandaRadius.bmd,
+          border: Border.all(color: PandaColors.laranja.withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.sync_problem_outlined,
+                    color: PandaColors.laranjaEscuro),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    itens.length == 1
+                        ? '1 ação não foi enviada'
+                        : '${itens.length} ações não foram enviadas',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: PandaColors.laranjaEscuro,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tentamos várias vezes e não deu. Nada foi perdido — você pode '
+              'tentar de novo agora.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            for (final p in itens)
+              Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p.descricao,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    if (p.ultimoErro != null)
+                      Text(p.ultimoErro!,
+                          style: const TextStyle(
+                              fontSize: 12.5,
+                              height: 1.35,
+                              color: PandaColors.cinzaTexto)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () => ref
+                              .read(filaPendentesProvider.notifier)
+                              .tentarDeNovo(p.id),
+                          child: const Text('Tentar de novo'),
+                        ),
+                        TextButton(
+                          onPressed: () => ref
+                              .read(filaPendentesProvider.notifier)
+                              .descartar(p.id),
+                          child: const Text('Descartar',
+                              style: TextStyle(color: PandaColors.cinzaTexto)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
