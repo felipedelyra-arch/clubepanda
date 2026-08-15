@@ -96,6 +96,23 @@ service cloud.firestore {
     match /rewards/{rewardId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+
+      // ---- rewards/{rewardId}/cupons ----
+      // O estoque virou um documento por unidade, e resgatar é reservar um
+      // deles (ver functions/src/lib/cupons.ts). Ninguém toca isso pelo
+      // cliente: quem reserva é a Cloud Function, com Admin SDK.
+      //
+      // Fechado também para LEITURA, e para o admin. O que o app precisa
+      // saber — quantos sobraram — está em `rewards/{id}.estoque`, mantido
+      // pelo gatilho. Abrir a subcoleção entregaria de graça a lista de quem
+      // resgatou o quê, que é dado de outro sócio.
+      //
+      // Regra de subcoleção não herda a do documento pai; sem este bloco a
+      // leitura cairia no `match /{document=**}` lá embaixo, que já nega — o
+      // bloco existe para deixar a intenção escrita, não por acaso.
+      match /cupons/{cupomId} {
+        allow read, write: if false; // apenas Cloud Functions
+      }
     }
 
     // ---- menu ----

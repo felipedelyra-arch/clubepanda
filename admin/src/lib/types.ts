@@ -72,7 +72,10 @@ export interface Reward {
   descricao: string;
   imagem?: string | null;
   tipo: RewardTipo;
+  /** Quantos ainda estão livres. Calculado pelo gatilho, não escreva. */
   estoque: number;
+  /** Quantos o dono quer disponíveis. É este que o formulário grava. */
+  estoqueAlvo?: number;
   /**
    * Quanto o prêmio vale em reais (preço de cardápio). É o que alimenta o
    * "você já economizou" na Home do app (`app/lib/core/services/services.dart`).

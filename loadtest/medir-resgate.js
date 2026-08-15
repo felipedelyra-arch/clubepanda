@@ -1,37 +1,49 @@
 /**
  * Cenário 2 — corrida pelo mesmo prêmio (o fluxo principal do produto).
  *
- * Reproduz a transação de `redeemReward`
- * (firebase/functions/src/redemptions.ts:31-81) com N pessoas resgatando o
- * MESMO prêmio ao mesmo tempo — que é exatamente o que acontece quando o push
- * "🎁 Prêmio novo no Clube" chega em todos os celulares no mesmo segundo.
+ * É o que acontece quando o dono cadastra um rodízio grátis: `onRewardCreated`
+ * dispara push para todos os assinantes, todo mundo abre o app no mesmo minuto
+ * e toca "resgatar" no mesmo prêmio.
  *
- * O que se mede: quantas transações passam, quantas falham, e quanto o
- * documento do prêmio segura de escrita concorrente. Todas as transações
- * disputam `rewards/{id}`, então elas serializam nesse documento.
+ * Roda os DOIS desenhos sobre os mesmos dados:
+ *
+ *   ANTES  — transação que lia e escrevia `rewards/{id}`. Todas as pessoas
+ *            disputando a MESMA linha do banco.
+ *   DEPOIS — o estoque virou um documento por unidade
+ *            (`rewards/{id}/cupons/{i}`), e resgatar é reservar um deles. Pessoas
+ *            diferentes tocam documentos diferentes.
  *
  * Uso: node loadtest/medir-resgate.js [concorrentes] [estoque]
  */
+const path = require("path");
 const { db, exigirEmulador, cronometrar, percentis, ms } = require("./lib");
 
-const CONCORRENTES = Number(process.argv[2] || 100);
-const ESTOQUE = Number(process.argv[3] || 1000);
-const REWARD_ID = `premio_teste_${Date.now()}`;
+const { sincronizarPool, reservarCupom } = require(
+  path.join(__dirname, "..", "firebase", "functions", "lib", "lib", "cupons")
+);
 
-async function resgatar(uid) {
-  const rewardRef = db.doc(`rewards/${REWARD_ID}`);
+const CONCORRENTES = Number(process.argv[2] || 50);
+const ESTOQUE = Number(process.argv[3] || 1000);
+
+const uid = (i) => `u${String(i).padStart(7, "0")}`;
+
+// ---------------------------------------------------------------------------
+// ANTES — transação no documento do prêmio
+// ---------------------------------------------------------------------------
+
+async function resgatarAntigo(rewardId, u) {
+  const rewardRef = db.doc(`rewards/${rewardId}`);
   return db.runTransaction(async (tx) => {
     const jaResgatou = db
       .collection("redemptions")
-      .where("userId", "==", uid)
-      .where("rewardId", "==", REWARD_ID)
+      .where("userId", "==", u)
+      .where("rewardId", "==", rewardId)
       .limit(1);
 
     const [rewardSnap, jaSnap] = await Promise.all([
       tx.get(rewardRef),
       tx.get(jaResgatou),
     ]);
-
     if (!rewardSnap.exists) throw new Error("not-found");
     if (!jaSnap.empty) throw new Error("already-exists");
 
@@ -41,9 +53,8 @@ async function resgatar(uid) {
     tx.update(rewardRef, { estoque: estoque - 1 });
     const ref = db.collection("redemptions").doc();
     tx.set(ref, {
-      userId: uid,
-      rewardId: REWARD_ID,
-      valor: 45,
+      userId: u,
+      rewardId,
       codigo: Math.random().toString(36).slice(2, 14).toUpperCase(),
       status: "disponivel",
       criadoEm: new Date(),
@@ -52,30 +63,44 @@ async function resgatar(uid) {
   });
 }
 
-async function main() {
-  exigirEmulador();
-  await db.doc(`rewards/${REWARD_ID}`).set({
-    titulo: "Rodízio grátis",
-    valor: 45,
-    estoque: ESTOQUE,
+// ---------------------------------------------------------------------------
+// DEPOIS — reserva de cupom + id de resgate determinístico
+// ---------------------------------------------------------------------------
+
+async function resgatarNovo(rewardId, u) {
+  const ref = db.doc(`redemptions/${rewardId}__${u}`);
+
+  const existente = await ref.get();
+  if (existente.exists) return { repetido: true, id: ref.id };
+
+  const cupomId = await reservarCupom(rewardId, u, ref.id);
+  if (!cupomId) throw new Error("sem-estoque");
+
+  await ref.create({
+    userId: u,
+    rewardId,
+    cupomId,
+    codigo: Math.random().toString(36).slice(2, 14).toUpperCase(),
+    status: "disponivel",
+    criadoEm: new Date(),
   });
+  return { id: ref.id };
+}
 
-  console.log(
-    `\n=== Corrida pelo mesmo prêmio — ${CONCORRENTES} pessoas, estoque ${ESTOQUE} ===\n`
-  );
+// ---------------------------------------------------------------------------
 
+async function rodar(nome, rewardId, resgatar) {
   const latencias = [];
   const erros = {};
 
   const [, tTotal] = await cronometrar(async () => {
     await Promise.all(
       Array.from({ length: CONCORRENTES }, async (_, i) => {
-        const uid = `u${String(i).padStart(7, "0")}`;
         try {
-          const [, t] = await cronometrar(() => resgatar(uid));
+          const [, t] = await cronometrar(() => resgatar(rewardId, uid(i)));
           latencias.push(t);
         } catch (e) {
-          const chave = e.message || String(e.code || "erro");
+          const chave = (e.message || String(e.code)).slice(0, 50);
           erros[chave] = (erros[chave] ?? 0) + 1;
         }
       })
@@ -86,27 +111,80 @@ async function main() {
   const falhas = CONCORRENTES - ok;
   const p = percentis(latencias.length ? latencias : [0]);
 
-  console.log(`sucesso        : ${ok}/${CONCORRENTES}`);
+  console.log(`--- ${nome} ---`);
+  console.log(`  sucesso       : ${ok}/${CONCORRENTES}`);
   console.log(
-    `falhas         : ${falhas} (${((falhas / CONCORRENTES) * 100).toFixed(1)}%)`
+    `  falhas        : ${falhas} (${((falhas / CONCORRENTES) * 100).toFixed(1)}%)`
   );
-  if (falhas) console.log(`  motivos      : ${JSON.stringify(erros)}`);
-  console.log(`tempo total    : ${ms(tTotal)}`);
+  if (falhas) console.log(`    motivos     : ${JSON.stringify(erros)}`);
+  console.log(`  tempo total   : ${ms(tTotal)}`);
+  console.log(`  vazão         : ${((ok / tTotal) * 1000).toFixed(1)} resgates/s`);
   console.log(
-    `vazão efetiva  : ${((ok / tTotal) * 1000).toFixed(1)} resgates/s ` +
-      `(todos no MESMO documento de prêmio)`
-  );
-  console.log(
-    `latência       : p50 ${ms(p.p50)} | p95 ${ms(p.p95)} | p99 ${ms(p.p99)} | máx ${ms(p.max)}`
+    `  latência      : p50 ${ms(p.p50)} | p95 ${ms(p.p95)} | máx ${ms(p.max)}\n`
   );
 
-  const restante = (await db.doc(`rewards/${REWARD_ID}`).get()).get("estoque");
-  const baixado = ESTOQUE - restante;
+  return { ok, falhas, tTotal };
+}
+
+async function limpar(rewardId) {
+  for (const col of ["redemptions"]) {
+    const snap = await db.collection(col).get();
+    for (let i = 0; i < snap.size; i += 450) {
+      const b = db.batch();
+      snap.docs.slice(i, i + 450).forEach((d) => b.delete(d.ref));
+      await b.commit();
+    }
+  }
+  await db.recursiveDelete(db.doc(`rewards/${rewardId}`));
+}
+
+async function main() {
+  exigirEmulador();
   console.log(
-    `\nintegridade do estoque: baixou ${baixado}, gravou ${ok} resgates ` +
-      `-> ${baixado === ok ? "OK, bate" : "DIVERGENTE"}`
+    `\n=== Corrida pelo mesmo prêmio — ${CONCORRENTES} pessoas, estoque ${ESTOQUE} ===\n`
   );
-  process.exit(0);
+
+  // ANTES
+  const antigoId = "premio_antigo";
+  await limpar(antigoId);
+  await db.doc(`rewards/${antigoId}`).set({ titulo: "Rodízio", valor: 45, estoque: ESTOQUE });
+  const antes = await rodar("ANTES (transação no documento do prêmio)", antigoId, resgatarAntigo);
+  const restanteAntes = (await db.doc(`rewards/${antigoId}`).get()).get("estoque");
+
+  // DEPOIS
+  const novoId = "premio_novo";
+  await limpar(novoId);
+  await db.doc(`rewards/${novoId}`).set({ titulo: "Rodízio", valor: 45, estoqueAlvo: ESTOQUE });
+  process.stdout.write(`  (gerando ${ESTOQUE} cupons…)\n`);
+  await sincronizarPool(novoId, ESTOQUE);
+  const depois = await rodar("DEPOIS (reserva de cupom)", novoId, resgatarNovo);
+
+  const livres = await db
+    .collection(`rewards/${novoId}/cupons`)
+    .where("status", "==", "livre")
+    .count()
+    .get();
+  const usados = ESTOQUE - livres.data().count;
+
+  console.log("=== antes -> depois ===");
+  console.log(
+    `  sucesso : ${antes.ok}/${CONCORRENTES} -> ${depois.ok}/${CONCORRENTES}`
+  );
+  console.log(`  tempo   : ${ms(antes.tTotal)} -> ${ms(depois.tTotal)}`);
+
+  console.log("\n=== integridade do estoque ===");
+  console.log(
+    `  antes : baixou ${ESTOQUE - restanteAntes}, gravou ${antes.ok} resgates -> ` +
+      `${ESTOQUE - restanteAntes === antes.ok ? "bate" : "DIVERGENTE"}`
+  );
+  console.log(
+    `  depois: usou ${usados} cupons, gravou ${depois.ok} resgates -> ` +
+      `${usados === depois.ok ? "bate" : "DIVERGENTE"}`
+  );
+
+  const ok = usados === depois.ok && depois.falhas === 0;
+  console.log(`\n${ok ? "PASSOU" : "ATENÇÃO — ver acima"}`);
+  process.exit(ok ? 0 : 1);
 }
 
 main().catch((e) => {

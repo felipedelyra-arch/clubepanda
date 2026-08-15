@@ -60,7 +60,11 @@ export function Rewards() {
         titulo: editando.titulo,
         descricao: editando.descricao ?? "",
         tipo: editando.tipo ?? "cupom",
-        estoque: Number(editando.estoque ?? 0),
+        // O campo escrito é `estoqueAlvo` — quantos o dono QUER disponíveis. O
+        // `estoque` que aparece na lista é calculado pelo gatilho, contando os
+        // cupons livres (functions/src/rewards.ts). Escrever `estoque` aqui
+        // seria brigar com o gatilho pelo mesmo campo.
+        estoqueAlvo: Number(editando.estoque ?? 0),
         valor: Number(editando.valor ?? 0),
         resgatavelAte: editando.resgatavelAte ?? null,
         imagem,
@@ -191,8 +195,11 @@ export function Rewards() {
               >
                 <input type="number" step="0.01" min="0" className={inputBase} value={editando.valor ?? 0} onChange={(e) => setEditando({ ...editando, valor: Number(e.target.value) })} />
               </Field>
-              <Field label="Estoque">
-                <input type="number" className={inputBase} value={editando.estoque ?? 0} onChange={(e) => setEditando({ ...editando, estoque: Number(e.target.value) })} />
+              <Field
+                label="Estoque"
+                hint="Quantos ainda podem ser resgatados. Diminuir nunca tira o prêmio de quem já resgatou."
+              >
+                <input type="number" min="0" className={inputBase} value={editando.estoque ?? 0} onChange={(e) => setEditando({ ...editando, estoque: Number(e.target.value) })} />
               </Field>
               <Field label="Resgatar até">
                 <input

@@ -267,7 +267,10 @@ export const onRewardCreated = onDocumentCreated("rewards/{rewardId}", async (ev
   const premio = snap?.data();
   if (!snap || !premio) return;
 
-  if ((premio.estoque ?? 0) <= 0) return;
+  // `estoqueAlvo` é o que o painel escreve; `estoque` só existe depois que o
+  // gatilho de cupons roda. Na criação do prêmio o segundo ainda não chegou,
+  // então olhar só para ele engoliria o aviso de todo prêmio novo.
+  if (((premio.estoqueAlvo ?? premio.estoque) ?? 0) <= 0) return;
   const ate = paraData(premio.resgatavelAte);
   if (ate && ate < new Date()) return;
 
