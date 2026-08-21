@@ -70,7 +70,8 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 # Ícone do app nas duas lojas. Regerar com:
-#   dart run flutter_launcher_icons
+#   uv run --with pillow python app/tool/gerar_icones.py   # refaz a arte + PWA
+#   dart run flutter_launcher_icons                        # Android e iOS
 # A fonte é a mesma logo que aparece dentro do app, então ícone e app combinam.
 # O fundo é o laranja da placa original do Tio Panda (#FF8D06), não branco: no
 # celular o círculo branco sumia contra papéis de parede claros.
@@ -79,10 +80,11 @@ flutter_launcher_icons:
   image_path: "assets/logo/panda_logo_icon.png"
   android: "ic_launcher"
   # Ícone adaptativo (Android 8+): o sistema recorta com a máscara do
-  # fabricante. O `inset` afasta a arte da borda pra logo não sair cortada.
+  # fabricante. O `inset` afasta a arte da borda pra logo não sair cortada. Anda
+  # junto com a fração do círculo em tool/gerar_icones.py: 20 aqui = 0,80 lá.
   adaptive_icon_background: "#FF8D06"
   adaptive_icon_foreground: "assets/logo/panda_logo.png"
-  adaptive_icon_foreground_inset: 18
+  adaptive_icon_foreground_inset: 20
   min_sdk_android: 21
   ios: true
   # iOS não aceita ícone com transparência — o laranja entra no lugar dela.
