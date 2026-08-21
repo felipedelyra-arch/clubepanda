@@ -73,6 +73,23 @@ export const sincronizarCupons = onDocumentWritten("rewards/{rewardId}", async (
 export const estoqueDoPremio = onDocumentWritten(
   "rewards/{rewardId}/cupons/{cupomId}",
   async (event) => {
+    // Só mudança de estado de cupom que JÁ existia interessa aqui — ou seja,
+    // reserva e devolução, que são as duas coisas que mexem no que o sócio vê.
+    //
+    // Criação e remoção de cupom vêm de `sincronizarPool`, e ela grava o
+    // `estoque` certo logo depois, com o número contado de uma vez só. Sem
+    // esta guarda, o dono cadastrar um prêmio com 1.000 unidades disparava
+    // 1.000 entregas deste gatilho, cada uma com uma contagem e uma escrita no
+    // MESMO documento de prêmio: 1.000 contagens jogadas fora, 1.000 escritas
+    // disputando uma linha só, e a fila de invocações competindo com os
+    // resgates de verdade. Agora essas entregas caem fora na primeira linha.
+    //
+    // Se algum dia outro caminho criar cupom sem passar pela sincronia, o
+    // `estoque` fica atrasado até a próxima passada de [conferirEstoques].
+    const antes = event.data?.before;
+    const depois = event.data?.after;
+    if (!antes?.exists || !depois?.exists) return;
+
     const rewardId = event.params.rewardId;
     const premio = db.doc(`rewards/${rewardId}`);
     if (!(await premio.get()).exists) return; // prêmio apagado no meio

@@ -196,20 +196,69 @@ function vigente(promo: FirebaseFirestore.DocumentData, agora = new Date()): boo
   return true;
 }
 
+/**
+ * Reserva o direito de avisar sobre [ref]. Devolve `false` se alguém já pegou.
+ *
+ * ## Por que a marca é gravada ANTES do envio
+ *
+ * Gatilho do Firestore em gen2 entrega **pelo menos uma vez**: a mesma criação
+ * pode chamar a função duas vezes, e nada no código sabe disso. Marcando
+ * depois do envio, a segunda entrega chegava com `avisoEnviadoEm` ainda vazio
+ * e disparava tudo de novo — push repetido no celular de cada sócio e o aviso
+ * duplicado na central de todo mundo. Numa base de 2.500 assinantes, o dono
+ * descobre isso pelo WhatsApp dos clientes.
+ *
+ * A mesma corrida existe entre `onPromotionCreated` e a passada de 15 minutos
+ * de `publicarPromocoesAgendadas`, que filtra pelo mesmo campo.
+ *
+ * A transação é o que torna a reserva atômica: duas entregas simultâneas leem
+ * e escrevem a mesma linha, e só uma sai vencedora.
+ *
+ * ## O lado ruim, assumido
+ *
+ * Se o envio falhar depois da reserva, aquela promoção **não avisa mais
+ * sozinha** — fica marcada como avisada. Fica o `avisoErro` no documento e o
+ * log de erro, e o dono reenvia pela tela de notificações do painel.
+ *
+ * É a troca certa: um aviso perdido é um botão; um aviso duplicado é a base
+ * inteira recebendo push repetido, e não tem botão que desfaça.
+ */
+export async function reservarAviso(ref: FirebaseFirestore.DocumentReference): Promise<boolean> {
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return false;
+    if (snap.get("avisoEnviadoEm")) return false;
+    tx.set(ref, { avisoEnviadoEm: FieldValue.serverTimestamp() }, { merge: true });
+    return true;
+  });
+}
+
 async function avisarPromocao(
   ref: FirebaseFirestore.DocumentReference,
   promo: FirebaseFirestore.DocumentData
 ) {
-  await enviarAviso({
-    titulo: `🐼 ${promo.titulo ?? "Nova promoção!"}`,
-    corpo: promo.descricao ?? "Confira no PandaVip.",
-    publico: promo.apenasAssinantes ? "assinantes" : "todos",
-    origem: "promocao",
-    tipo: "promo",
-    imagem: promo.imagem,
-  });
-  // Marca pra nunca avisar duas vezes sobre a mesma promoção.
-  await ref.set({ avisoEnviadoEm: FieldValue.serverTimestamp() }, { merge: true });
+  if (!(await reservarAviso(ref))) {
+    logger.info("Promoção já avisada; entrega repetida ignorada.", { promoId: ref.id });
+    return;
+  }
+
+  try {
+    await enviarAviso({
+      titulo: `🐼 ${promo.titulo ?? "Nova promoção!"}`,
+      corpo: promo.descricao ?? "Confira no PandaVip.",
+      publico: promo.apenasAssinantes ? "assinantes" : "todos",
+      origem: "promocao",
+      tipo: "promo",
+      imagem: promo.imagem,
+    });
+  } catch (err) {
+    logger.error("Promoção reservada mas o aviso falhou; reenviar pelo painel.", {
+      promoId: ref.id,
+      err,
+    });
+    await ref.set({ avisoErro: String(err) }, { merge: true });
+    throw err;
+  }
 }
 
 /**
@@ -324,14 +373,30 @@ export const onRewardCreated = onDocumentCreated("rewards/{rewardId}", async (ev
   const ate = paraData(premio.resgatavelAte);
   if (ate && ate < new Date()) return;
 
-  await enviarAviso({
-    titulo: `🎁 ${premio.titulo ?? "Prêmio novo no Clube"}`,
-    corpo: premio.descricao ?? "Resgate pelo app e retire no salão.",
-    // Prêmio é benefício de sócio: só quem paga a mensalidade resgata.
-    publico: "assinantes",
-    origem: "premio",
-    tipo: "promo",
-    imagem: premio.imagem,
-  });
-  await snap.ref.set({ avisoEnviadoEm: FieldValue.serverTimestamp() }, { merge: true });
+  // Reserva antes de enviar, pelo mesmo motivo da promoção: entrega repetida
+  // do gatilho mandaria o push do rodízio grátis duas vezes pra base inteira.
+  // Ver [reservarAviso].
+  if (!(await reservarAviso(snap.ref))) {
+    logger.info("Prêmio já avisado; entrega repetida ignorada.", { rewardId: snap.id });
+    return;
+  }
+
+  try {
+    await enviarAviso({
+      titulo: `🎁 ${premio.titulo ?? "Prêmio novo no Clube"}`,
+      corpo: premio.descricao ?? "Resgate pelo app e retire no salão.",
+      // Prêmio é benefício de sócio: só quem paga a mensalidade resgata.
+      publico: "assinantes",
+      origem: "premio",
+      tipo: "promo",
+      imagem: premio.imagem,
+    });
+  } catch (err) {
+    logger.error("Prêmio reservado mas o aviso falhou; reenviar pelo painel.", {
+      rewardId: snap.id,
+      err,
+    });
+    await snap.ref.set({ avisoErro: String(err) }, { merge: true });
+    throw err;
+  }
 });

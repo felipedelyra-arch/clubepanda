@@ -540,9 +540,146 @@ direções, e `notifications` por `criadoEm` em escopo COLLECTION_GROUP.
 
 ### 11.7 Ainda aberto
 
-- **Fila persistente em disco** para chamadas de função. Hoje há retentativa,
-  não fila: fechar o app no meio ainda perde a tentativa. Só vale a pena depois
-  que todas as funções de escrita forem idempotentes — hoje `redeemReward` e
-  `deleteAccount` são.
+- ~~**Fila persistente em disco** para chamadas de função.~~ **Feita depois
+  disto**, em `app/lib/core/services/fila_pendentes.dart`. Ver seção 13.
 - **Membros** (painel) ainda carrega `users` e `subscriptions` inteiras.
 - **Blaze.** Nada disso está em produção.
+
+---
+
+## 12. Terceira passada de concorrência — 20/08/2026
+
+Pedido do dono do projeto, com estas palavras: *"ver se o código do app está
+estruturado para aguentar muitas requisições ao mesmo tempo (…) que vários
+usuários usem o app ao mesmo tempo, que o app não caia, não trave, e se
+porventura cair, não perca nada do que o usuário tenha feito"*.
+
+Isto é uma **revisão do estado depois das Ondas 1 e 2**, não uma repetição
+delas. As 19 funções, o app e o painel foram lidos de novo procurando um padrão
+só: **duas coisas acontecendo no mesmo instante**.
+
+### 12.1 O que já estava certo (conferido, não presumido)
+
+- **Resgate.** Continua sem fila: 200 simultâneos → 200/200, e **500
+  simultâneos → 500/500, 0% de falha**, 63,6 resgates/s no emulador desta
+  máquina. O mesmo teste com o desenho antigo (transação no documento do
+  prêmio) entrega **1 de 500**.
+- **Estoque bate sempre.** 500 cupons usados, 500 resgates gravados.
+- **`maxInstances: 10` não é teto de 10 pessoas.** No gen2 cada função tem o
+  próprio conjunto de instâncias, e a concorrência padrão é **80 requisições
+  por instância** quando a CPU é ≥ 1 (que é o padrão do `firebase-functions`
+  para memória ≤ 2 GB). São ~800 chamadas em voo por função. Não mexer.
+- **Escrita direta em documentos diferentes não disputa nada.** 100 pessoas
+  editando o próprio perfil ao mesmo tempo: 100/100, p95 de 193 ms.
+- **PDV, Stripe e Pix** são idempotentes por id derivado (`pdv_{comanda}`,
+  `payments/stripe_{fatura}`, `payments/pix_{txid}`). Reenvio não duplica.
+
+### 12.2 Seis defeitos encontrados e corrigidos
+
+| # | Onde | O que acontecia com muita gente junto |
+|---|---|---|
+| 1 | `users.ts` — `onAuthUserCreate` | **Cadastro falhava.** Função bloqueante do Auth tem teto rígido de 7 s, e o caminho fazia leitura + escrita + transação com até 5 sorteios, sem prazo nenhum. Instância fria numa rajada de cadastro estourava o teto e o Firebase recusava a criação da conta. |
+| 2 | `referral.ts` — `applyReferral` | **Padrinho ganhava várias indicações por uma pessoa só.** Check-then-write fora de transação. Medido com o código antigo: 3 toques simultâneos = **3 indicações**. |
+| 3 | `referral.ts` — `applyReferral` | Reenvio devolvia `already-exists`, e a fila de pendências do app trata isso como falha permanente: uma indicação que **deu certo** ia parar na caixa de "não enviados" do sócio. |
+| 4 | `referral.ts` — `ensureReferralCode` | Perfil lido fora da transação: toque duplo gravava **dois** documentos em `referralCodes` para o mesmo sócio. A exclusão de conta só apaga o que está no perfil — o outro ficaria resolvendo para sempre para um uid apagado, inclusive para o PDV do salão. |
+| 5 | `push.ts` — `onPromotionCreated` / `onRewardCreated` | A marca `avisoEnviadoEm` era gravada **depois** do envio. Gatilho gen2 entrega ao menos uma vez: entrega repetida = **push duplicado para a base inteira** e aviso duplicado na central de todo mundo. |
+| 6 | `rewards.ts` — `estoqueDoPremio` | Cadastrar um prêmio com 1.000 unidades disparava 1.000 entregas do gatilho, cada uma com uma contagem e uma escrita no **mesmo** documento de prêmio — 1.000 escritas disputando uma linha só, competindo por instância com os resgates de verdade. |
+
+Como cada uma foi resolvida:
+
+1. **Orçamento de tempo.** `ORCAMENTO_CADASTRO_MS = 4500`, e cada passo corre
+   contra o relógio (`comPrazo`). Estourou, segue sem esperar e loga. As redes
+   de segurança já existiam e são baratas: o app grava o perfil ao completar o
+   cadastro, e `backfillCodigosSocio` gera a carteirinha sob demanda. *Perder o
+   código de sócio é um botão no painel; perder o cadastro é perder o sócio.*
+2. **Transação** na marca `indicadoPor`. O `increment` do padrinho fica **fora**
+   dela de propósito: é atômico por si, e um código que viraliza faria dezenas
+   de transações disputarem o documento do padrinho — a mesma fila que tiramos
+   do resgate.
+3. **Repetir o mesmo código devolve `repetido: true`**, não erro.
+4. Perfil lido **dentro** da transação, igual a `lib/codigoSocio.ts`.
+5. **Reserva antes de enviar** (`reservarAviso`, transação). Troca assumida: se
+   o envio falhar depois da reserva, aquela promoção não avisa mais sozinha —
+   fica o `avisoErro` no documento e o dono reenvia pelo painel. *Um aviso
+   perdido é um botão; um aviso duplicado é a base inteira recebendo push
+   repetido, e não tem botão que desfaça.*
+6. O gatilho só reage a cupom que **já existia** (reserva e devolução). Criação
+   e remoção vêm de `sincronizarPool`, que grava o número certo de uma vez só.
+
+### 12.3 O teste que não testava nada
+
+`loadtest/verificar-concorrencia.js` tinha uma **cópia manual** da lógica de
+indicação — e a cópia já trazia a correção de corrida que `referral.ts` **não**
+tinha. O teste passava com a versão certa enquanto o app rodava a errada.
+
+Corrigido na raiz: a regra saiu de dentro do `onCall` e virou
+`garantirCodigoIndicacao` / `aplicarIndicacao`, exportadas e importadas pelo
+teste a partir do código **compilado** — mesmo desenho de `executarExclusao` em
+`account.ts`. O `onCall` ficou só com "quem pode chamar" e "como traduzir o
+erro".
+
+Lição para a próxima: teste que reescreve a lógica em vez de importá-la não
+prova nada sobre o que vai para o ar.
+
+### 12.4 "Se cair, não perde nada" — as três camadas
+
+O app tem três redes diferentes, e vale saber qual cobre o quê:
+
+| Camada | Cobre | Não cobre |
+|---|---|---|
+| **Cache offline do Firestore** (`main.dart`, `persistenceEnabled: true`) | Escrita direta em coleção: fica em disco e sobe sozinha quando a rede volta. Sobrevive a fechar o app. | Chamada de Cloud Function. |
+| **`Chamada.chamar`** (retentativa com espera dobrando + sorteio) | Falha passageira enquanto a pessoa está olhando a tela. | Fechar o app no meio — a retentativa mora na memória. |
+| **`FilaPendentes`** (fila em disco) | `cancelSubscription` e `applyReferral`: gravadas em disco **antes** de tentar, drenadas quando a rede volta, e o que esgota as tentativas aparece numa caixa de "não enviados" em Ajustes. Nada é descartado calado. | Executar com o app fechado. Para isso quem cobre é o servidor: `finalizarExclusoes` e `conferirEstoques`. |
+
+`redeemReward` e `deleteAccount` **não** são enfileiradas de propósito, e não
+precisam ser: as duas são idempotentes. Repetir o resgate devolve o **mesmo**
+código (id derivado de prêmio + pessoa), e a exclusão retoma de onde parou e
+tem varredura diária. O sócio que perdeu a conexão no meio toca de novo e cai
+no mesmo lugar.
+
+### 12.5 Verificação
+
+Tudo contra o emulador (Firestore + Auth), nesta máquina, com os scripts do
+repositório:
+
+| Suíte | Resultado |
+|---|---|
+| `firebase/test/rules.test.js` | 23/23 |
+| `loadtest/verificar-concorrencia.js` | 6 cenários, todos OK — **2 novos** (toque duplo na indicação, entrega repetida do aviso) |
+| `loadtest/verificar-resgate.js` | todos OK |
+| `loadtest/verificar-exclusao.js` | todos OK |
+| `loadtest/verificar-faxina.js` | todos OK |
+| `loadtest/verificar-backfill.js` | 600 perfis, ninguém pulado |
+| `loadtest/verificar-dashboard.js` | agregação bate campo a campo |
+| `loadtest/medir-resgate.js 500 1500` | 500/500, 0% de falha, 63,6/s |
+
+⚠️ `verificar-concorrencia.js` agora exige `npm --prefix firebase/functions run
+build` antes de rodar: ele importa o código compilado, não uma cópia.
+
+Cada correção foi conferida contra o código **antigo** para provar que o teste
+pega a regressão — o mesmo padrão das ondas anteriores. A prova mais clara: com
+o `applyReferral` antigo, três toques simultâneos davam ao padrinho **3**
+indicações; com o novo, **1**.
+
+### 12.6 O que continua aberto
+
+Nada disto é regressão; são limites conhecidos, listados para não parecerem
+cobertos.
+
+1. **Sem limite de chamadas em nenhuma função.** Nada impede martelar
+   `redeemReward` ou `applyReferral` por script. As correções acima garantem que
+   o **resultado** continua certo por mais que se insista, mas não impedem o
+   gasto. É o par natural do item seguinte.
+2. **App Check instalado mas não imposto no console.** Enquanto for assim, o
+   canal automatizado está aberto: dá para pegar a chave de API do APK e falar
+   direto com Firestore e Functions. Impor derruba versões antigas do app que
+   estejam por aí — combinar antes, nunca de surpresa.
+3. **`enviarAviso` é uma invocação só.** Com 10 mil sócios cabe folgado no
+   timeout; em dezenas de milhares, precisa virar trabalho em pedaços. Não é o
+   problema de hoje, mas é onde ele apareceria.
+4. **Painel, tela Membros**, ainda carrega `users` e `subscriptions` inteiras.
+   Passando de alguns milhares de sócios, precisa de busca no servidor (campo
+   `nomeBusca` em minúsculas, consulta por prefixo) e paginação. Está comentado
+   no arquivo. É a tela do dono, uma pessoa só — não derruba o app de ninguém.
+5. **Blaze.** Continua valendo o de sempre: sem ele as funções não existem em
+   produção, e nada disto é observável de verdade no ar.

@@ -23,6 +23,21 @@ const { garantirCodigoSocio } = require(
   path.join(__dirname, "..", "firebase", "functions", "lib", "lib", "codigoSocio")
 );
 
+// ⚠️ Importado do código COMPILADO de produção, de propósito.
+//
+// Estes dois casos já tiveram uma cópia da lógica escrita à mão aqui dentro —
+// e a cópia recebeu a correção de corrida que `referral.ts` não tinha. O teste
+// passava com a versão certa enquanto o app rodava a errada. Um teste que não
+// executa o código que vai pro ar não prova nada.
+//
+// Requer `npm --prefix firebase/functions run build` antes de rodar.
+const { garantirCodigoIndicacao, aplicarIndicacao } = require(
+  path.join(__dirname, "..", "firebase", "functions", "lib", "referral")
+);
+const { reservarAviso } = require(
+  path.join(__dirname, "..", "firebase", "functions", "lib", "push")
+);
+
 const PESSOAS = Number(process.argv[2] || 100);
 
 let falhas = 0;
@@ -124,19 +139,8 @@ async function main() {
     await db.doc("referralCodes/CONVITE").set({ uid: padrinho });
 
     const r = await simultaneo(PESSOAS, async (i) => {
-      const u = uid(i);
-      const meu = db.doc(`users/${u}`);
-      if ((await meu.get()).get("indicadoPor")) throw new Error("already-exists");
-      const lookup = await db.doc("referralCodes/CONVITE").get();
-      if (!lookup.exists) throw new Error("not-found");
-      await meu.set(
-        { indicadoPor: "CONVITE", indicadoPorUid: padrinho },
-        { merge: true }
-      );
-      await db.doc(`users/${padrinho}`).set(
-        { indicacoes: require("./lib").admin.firestore.FieldValue.increment(1) },
-        { merge: true }
-      );
+      const res = await aplicarIndicacao(uid(i), "CONVITE");
+      if (res.estado !== "aplicou") throw new Error(res.estado);
     });
 
     checar(`${PESSOAS} indicações aceitas`, r.ok === PESSOAS, `${r.ok}`);
@@ -154,35 +158,106 @@ async function main() {
   // -------------------------------------------------------------------------
   console.log("\n4. A MESMA pessoa gerando código de indicação em toque duplo");
   {
-    const { randomUUID } = require("crypto");
     const u = uid(0);
-
-    const gerar = async () => {
-      const userRef = db.doc(`users/${u}`);
-      const snap = await userRef.get();
-      const jaTem = snap.get("codigoIndicacao");
-      if (jaTem) return jaTem;
-      for (let i = 0; i < 5; i++) {
-        const cand = randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase();
-        const lookupRef = db.doc(`referralCodes/${cand}`);
-        const ok = await db.runTransaction(async (tx) => {
-          const [existe, atual] = await Promise.all([tx.get(lookupRef), tx.get(userRef)]);
-          if (atual.get("codigoIndicacao")) return atual.get("codigoIndicacao");
-          if (existe.exists) return null;
-          tx.set(lookupRef, { uid: u });
-          tx.set(userRef, { codigoIndicacao: cand }, { merge: true });
-          return cand;
-        });
-        if (ok) return ok;
-      }
-      throw new Error("sem-codigo");
-    };
-
-    const [a, b, c] = await Promise.all([gerar(), gerar(), gerar()]);
+    const [a, b, c] = await Promise.all([
+      garantirCodigoIndicacao(u),
+      garantirCodigoIndicacao(u),
+      garantirCodigoIndicacao(u),
+    ]);
     checar("os três toques devolvem o mesmo código", a === b && b === c, `${a}/${b}/${c}`);
 
     const gravado = (await db.doc(`users/${u}`).get()).get("codigoIndicacao");
     checar("o código gravado é esse mesmo", gravado === a, `${gravado}`);
+
+    // Código órfão: `referralCodes` só pode ter UM documento apontando pra
+    // este uid. Sobrando outro, a exclusão de conta (account.ts, etapa
+    // ÍNDICES) apaga só o que está no perfil, e o que sobra segue resolvendo
+    // pra um sócio que já apagou os dados — inclusive pro PDV do salão.
+    const indices = await db.collection("referralCodes").where("uid", "==", u).get();
+    checar(
+      "nenhum código de indicação órfão",
+      indices.size === 1,
+      `${indices.size} documento(s) apontando pro mesmo sócio`
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  console.log("\n5. A MESMA pessoa aplicando o MESMO código em toque duplo");
+  console.log("   (é o que a fila de pendências do app faz quando a rede volta:");
+  console.log("    ela reenvia a chamada, e o padrinho não pode ganhar duas)");
+  {
+    const padrinho = "cc_padrinho2";
+    const afilhado = "cc_afilhado";
+    await db.doc(`users/${padrinho}`).set({ uid: padrinho, indicacoes: 0 });
+    await db.doc(`users/${afilhado}`).set({ uid: afilhado });
+    await db.doc("referralCodes/CONVITE2").set({ uid: padrinho });
+
+    const rs = await Promise.all([
+      aplicarIndicacao(afilhado, "CONVITE2"),
+      aplicarIndicacao(afilhado, "CONVITE2"),
+      aplicarIndicacao(afilhado, "CONVITE2"),
+    ]);
+    const estados = rs.map((r) => r.estado);
+
+    checar(
+      "os três toques dão certo (nenhum vira erro na tela)",
+      estados.every((e) => e === "aplicou" || e === "repetido"),
+      estados.join(", ")
+    );
+    checar(
+      "só UM deles aplicou de verdade",
+      estados.filter((e) => e === "aplicou").length === 1,
+      estados.join(", ")
+    );
+
+    const contador = (await db.doc(`users/${padrinho}`).get()).get("indicacoes");
+    checar("o padrinho ganhou exatamente 1", contador === 1, `contou ${contador}`);
+
+    // E reenviar depois, com a marca já gravada, continua sendo sucesso — não
+    // `already-exists`, que a fila trataria como falha permanente e jogaria na
+    // caixa de "não enviados" do sócio.
+    const depois = await aplicarIndicacao(afilhado, "CONVITE2");
+    checar("reenvio posterior devolve 'repetido'", depois.estado === "repetido", depois.estado);
+
+    // Código diferente continua sendo recusado: um por conta.
+    await db.doc("referralCodes/OUTRO").set({ uid: padrinho });
+    const outro = await aplicarIndicacao(afilhado, "OUTRO");
+    checar(
+      "código diferente continua recusado",
+      outro.estado === "ja_usou_outro",
+      outro.estado
+    );
+
+    await db.doc(`users/${padrinho}`).delete();
+    await db.doc(`users/${afilhado}`).delete();
+  }
+
+  // -------------------------------------------------------------------------
+  console.log("\n6. O MESMO aviso entregue várias vezes pelo gatilho");
+  console.log("   (gatilho gen2 é entrega ao menos uma vez: sem reserva, o push");
+  console.log("    do rodízio grátis saía repetido pra base inteira)");
+  {
+    const ref = db.doc("promotions/promo_teste");
+    await ref.set({ titulo: "Rodízio grátis", ativa: true });
+
+    // Seis entregas ao mesmo tempo, que é o pior caso: todas leem antes de
+    // qualquer uma gravar.
+    const reservas = await Promise.all(
+      Array.from({ length: 6 }, () => reservarAviso(ref))
+    );
+    checar(
+      "só UMA entrega ganha o direito de avisar",
+      reservas.filter(Boolean).length === 1,
+      `${reservas.filter(Boolean).length} de 6`
+    );
+
+    // E a entrega que chega depois, com a marca já gravada, também não avisa.
+    const atrasada = await reservarAviso(ref);
+    checar("entrega atrasada não avisa de novo", atrasada === false);
+
+    // Documento apagado no meio não pode virar aviso fantasma.
+    await ref.delete();
+    checar("promoção apagada não reserva", (await reservarAviso(ref)) === false);
   }
 
   await limpar();

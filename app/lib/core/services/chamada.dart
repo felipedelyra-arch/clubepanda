@@ -22,9 +22,12 @@ import 'package:flutter/foundation.dart';
 /// Faz: repete o que falhou por motivo passageiro, com espera crescente e
 /// sorteio, e desiste rápido do que não adianta repetir.
 ///
-/// Não faz: fila em disco. Fechar o app no meio ainda perde a tentativa. A
-/// fila persistente é o passo seguinte, e só vale a pena depois que todas as
-/// funções de escrita forem idempotentes — hoje só `redeemReward` é.
+/// Não faz: sobreviver ao app sendo fechado. A retentativa mora na memória —
+/// fechar o app (ou o Android matar o processo em segundo plano) no meio de
+/// uma tentativa perde aquela tentativa. Quem cobre isso é
+/// [FilaPendentes] (`fila_pendentes.dart`), que grava a chamada em disco antes
+/// de tentar. Os dois trabalham juntos: este helper para quem está olhando a
+/// tela, a fila para o que precisa acontecer de todo jeito.
 class Chamada {
   Chamada._();
 
@@ -54,9 +57,14 @@ class Chamada {
   ///
   /// ⚠️ Só use em função **idempotente** — repetir precisa ser inofensivo. Se
   /// a resposta se perde no caminho de volta, o servidor já executou, e a
-  /// repetição vai executar de novo. `redeemReward` está preparada (o id do
-  /// resgate é derivado do prêmio e da pessoa); as outras ainda não, e por isso
-  /// [repetir] é `false` por padrão.
+  /// repetição vai executar de novo.
+  ///
+  /// Estão preparadas: `redeemReward` (id do resgate derivado do prêmio e da
+  /// pessoa), `applyReferral` (repetir o mesmo código devolve `repetido`, e o
+  /// contador do padrinho só sobe uma vez), `ensureReferralCode` e
+  /// `deleteAccount`. `createCheckoutSession` **não** é — criaria duas sessões
+  /// no Stripe. Por isso [repetir] é `false` por padrão: marcar como repetível
+  /// é afirmar algo sobre o servidor, e isso tem que ser decisão consciente.
   /// O resultado sai como `dynamic` de propósito: o Firebase decodifica o JSON
   /// em mapas de chave `Object?`, e tipar como `Map<String, dynamic>` estoura
   /// em cast na hora de ler — erro que só apareceria rodando.

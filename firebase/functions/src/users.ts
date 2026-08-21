@@ -6,35 +6,109 @@ import { garantirCodigoSocio } from "./lib/codigoSocio";
 import { requireAdmin } from "./lib/guards";
 
 /**
+ * Orçamento de tempo de [onAuthUserCreate], em milissegundos.
+ *
+ * Função bloqueante do Auth tem teto **rígido de 7 segundos** imposto pela
+ * plataforma, e não é configurável: passou disso, o Firebase devolve erro e o
+ * **cadastro do sócio falha**. Não é "fica pra depois" — a conta não nasce.
+ *
+ * O caminho aqui é uma leitura, uma escrita e uma transação que pode sortear
+ * até cinco vezes. Cada uma é rápida sozinha; o problema é a soma delas num
+ * momento ruim: instância fria (a primeira pessoa da manhã paga isso), rajada
+ * de cadastro no dia em que o dono divulga o clube no salão, ou o Firestore
+ * respondendo devagar. É justamente quando mais gente está entrando junto.
+ *
+ * 4,5s deixa margem confortável antes do corte da plataforma.
+ */
+const ORCAMENTO_CADASTRO_MS = 4500;
+
+/** Quanto do orçamento a carteirinha pode consumir. O perfil vem primeiro. */
+const ORCAMENTO_CODIGO_MS = 2000;
+
+/**
+ * Devolve o resultado de [promessa], ou `null` se ela passar de [ms].
+ *
+ * O trabalho não é cancelado — não dá pra cancelar uma escrita do Firestore no
+ * meio. Ele segue e provavelmente termina; o que muda é que **ninguém espera
+ * por ele**, e é a espera que derruba o cadastro.
+ */
+async function comPrazo<T>(promessa: Promise<T>, ms: number, oQue: string): Promise<T | null> {
+  let timer: NodeJS.Timeout | undefined;
+  const prazo = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[cadastro] ${oQue} passou de ${ms}ms; seguindo sem esperar.`);
+      resolve(null);
+    }, ms);
+  });
+  try {
+    return await Promise.race([promessa, prazo]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/**
  * Ao criar conta (Auth), garante o doc de perfil em users/.
  * Escrita pelo backend => ignora rules, mas mantém consistência.
+ *
+ * ⚠️ **Nada aqui pode lançar erro nem demorar.** Isto roda dentro do cadastro:
+ * o que falhar aqui vira "não foi possível criar sua conta" na cara de quem
+ * está se cadastrando. Por isso todo passo tem prazo e todo erro é engolido
+ * com log — as duas redes de segurança existem e são baratas:
+ *
+ *   - perfil ausente: `onAuthUserCreate` não é a única porta. O app grava o
+ *     perfil ao completar o cadastro, e as rules permitem;
+ *   - carteirinha ausente: `backfillCodigosSocio` gera sob demanda pelo painel,
+ *     e `garantirCodigoSocio` é idempotente.
+ *
+ * Perder o código de sócio de alguém é um botão no painel. Perder o cadastro é
+ * perder o sócio.
  */
 export const onAuthUserCreate = beforeUserCreated(async (event) => {
   const user = event.data;
   if (!user) return;
 
+  const comecou = Date.now();
   const ref = db.doc(`users/${user.uid}`);
-  const snap = await ref.get();
-  if (!snap.exists) {
-    await ref.set({
-      uid: user.uid,
-      nome: user.displayName ?? "",
-      email: user.email ?? "",
-      telefone: user.phoneNumber ?? "",
-      endereco: null,
-      fcmToken: null,
-      role: null,
-      criadoEm: FieldValue.serverTimestamp(),
-    });
+
+  try {
+    const snap = await comPrazo(ref.get(), ORCAMENTO_CADASTRO_MS, "leitura do perfil");
+    if (snap && !snap.exists) {
+      await comPrazo(
+        ref.set({
+          uid: user.uid,
+          nome: user.displayName ?? "",
+          email: user.email ?? "",
+          telefone: user.phoneNumber ?? "",
+          endereco: null,
+          fcmToken: null,
+          role: null,
+          criadoEm: FieldValue.serverTimestamp(),
+        }),
+        ORCAMENTO_CADASTRO_MS - (Date.now() - comecou),
+        "gravação do perfil"
+      );
+    }
+  } catch (err) {
+    console.error(`Falha ao criar perfil de ${user.uid}:`, err);
   }
 
   // Depois do set (que é sem merge e apagaria o campo). A carteirinha lê isso
   // direto do doc, então já nasce pronta — sem chamada extra do app.
-  // Falha aqui não pode barrar o cadastro: o backfill recupera depois.
-  try {
-    await garantirCodigoSocio(user.uid);
-  } catch (err) {
-    console.error(`Falha ao gerar codigoSocio de ${user.uid}:`, err);
+  // Falha ou demora aqui não pode barrar o cadastro: o backfill recupera.
+  const sobrou = ORCAMENTO_CADASTRO_MS - (Date.now() - comecou);
+  if (sobrou > 250) {
+    try {
+      await comPrazo(
+        garantirCodigoSocio(user.uid),
+        Math.min(ORCAMENTO_CODIGO_MS, sobrou),
+        "código de sócio"
+      );
+    } catch (err) {
+      console.error(`Falha ao gerar codigoSocio de ${user.uid}:`, err);
+    }
+  } else {
+    console.warn(`[cadastro] sem tempo pro código de ${user.uid}; fica pro backfill.`);
   }
   return;
 });
