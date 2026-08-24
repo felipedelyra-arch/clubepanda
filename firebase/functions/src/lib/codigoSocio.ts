@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./admin";
 
@@ -17,10 +18,23 @@ import { db } from "./admin";
 const ALFABETO = "2346789ABCDEFGHJKMNPQRTWXYZ";
 const TAMANHO = 6;
 
+/**
+ * ⚠️ `randomInt` (do `crypto`), e não `Math.random()`.
+ *
+ * O código é **identidade**: é ele que o atendente digita no PDV pra amarrar a
+ * conta da mesa a um sócio, e `acharUsuario` (lib/consumo.ts) confia nele sem
+ * pedir mais nada. `Math.random()` não é imprevisível — é um gerador com estado
+ * interno, e quem observa saídas suficientes (a carteirinha fica na tela, o
+ * código sai em cada cadastro) consegue reconstruir esse estado e prever os
+ * próximos. Aí o desconto do clube, e a conta, vão para o sócio errado.
+ *
+ * `randomInt` sorteia sem viés de módulo a partir da fonte do sistema
+ * operacional. Mesmo custo na prática, e não dá para prever.
+ */
 function candidato(): string {
   let s = "";
   for (let i = 0; i < TAMANHO; i++) {
-    s += ALFABETO[Math.floor(Math.random() * ALFABETO.length)];
+    s += ALFABETO[randomInt(ALFABETO.length)];
   }
   return s;
 }

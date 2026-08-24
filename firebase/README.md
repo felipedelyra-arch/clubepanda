@@ -97,6 +97,62 @@ o deploy não roda — é só isso que falta.
 
 ## Segurança
 
+### O que já está no código
+
 - Escrita de `subscriptions`, `payments`, `redemptions` bloqueada nas rules — só backend.
 - `role` nunca é auto-atribuída pelo cliente (rules + claim).
 - Chaves Stripe/Pix só no `.env` das functions, nunca no app/admin.
+- `users` aceita só a lista branca de campos do cliente (`camposDoCliente()` nas
+  rules). Campo que decide dinheiro ou identidade — `stripeCustomerId`,
+  `codigoSocio`, `role` — só entra por Cloud Function.
+- Webhooks (Stripe, Pix, PDV) conferem assinatura do corpo cru antes de olhar o
+  conteúdo, com comparação em tempo constante.
+- Toda `onCall` passa por `requireAuth`/`requireAdmin` (`functions/src/lib/guards.ts`).
+- Limite de chamadas por sócio e por ação (`functions/src/lib/rateLimit.ts`).
+  Os tetos estão em `LIMITES`, no topo do arquivo — é lá que se mexe.
+- Storage aceita só imagem de até 5 MB, e foto de perfil só do próprio dono.
+- Cabeçalhos de segurança (CSP, HSTS, `X-Frame-Options`, `Referrer-Policy`,
+  `Permissions-Policy`) servidos pelo Hosting nos dois sites — ver `firebase.json`.
+  Por causa do CSP, **nada de `<script>` inline ou `onclick=` no
+  `app/web/index.html`**: o navegador ignora em silêncio.
+- Varredura semanal de dependência e de segredo vazado
+  (`.github/workflows/dependencias.yml`) + Dependabot.
+
+### O que depende de console e ainda não está feito
+
+Estas quatro não têm como morar no código. Sem elas, metade do que está acima
+fica valendo só pela metade.
+
+1. **Restringir as chaves de API** (Google Cloud > APIs e serviços >
+   Credenciais). A chave Web do painel deve ser restrita por referenciador HTTP
+   (`pandavip.web.app`, `pandavip-app.web.app`); a Android por nome de pacote +
+   SHA-1; a iOS por bundle id. Elas são públicas por natureza — acompanham o APK
+   e o JavaScript —, e a restrição é o que impede que sejam usadas fora dali.
+2. **Impor o App Check** (Firebase > App Check). Já está instalado no app
+   Android/iOS e o token é enviado; falta a chave de site do reCAPTCHA para a
+   web e ligar a imposição. Depois disso, `REQUER_APP_CHECK=true` no `.env` das
+   functions fecha também as `onCall`. Ver `functions/src/lib/guards.ts`.
+3. **Política de senha** (Firebase > Authentication > Settings). O mínimo hoje é
+   o padrão de 6 caracteres. Subir para 8 com exigência de número basta.
+4. **TTL de `rateLimits`**, para os contadores sumirem sem custo de escrita:
+
+   ```
+   gcloud firestore fields ttls update expiraEm \
+     --collection-group=rateLimits --enable-ttl --project=pandavip
+   ```
+
+   Enquanto não estiver ligado, quem limpa é `limparRateLimits`
+   (`functions/src/manutencao.ts`), uma vez por dia.
+
+### Depois de cada deploy do Hosting
+
+Conferir que os cabeçalhos saíram, porque o emulador de Hosting não aplica o
+bloco `headers` e o erro só apareceria em produção:
+
+```
+curl -sI https://pandavip.web.app/ | grep -i -E "content-security|strict-transport"
+```
+
+E abrir `https://pandavip-app.web.app` uma vez com o console do navegador
+aberto: violação de CSP aparece lá, e no app web ela deixaria a tela presa no
+splash laranja.

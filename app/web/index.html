@@ -20,6 +20,19 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="Clube de vantagens do Tio Panda: pontos, cupons e recompensas.">
 
+  <!--
+    ⚠️ NADA de código dentro desta página.
+
+    O Firebase Hosting serve `Content-Security-Policy: script-src 'self'` neste
+    domínio (ver firebase/firebase.json). Sob essa política o navegador ignora
+    <script> inline e atributos de evento (onclick=, onerror=) — sem erro
+    visível, simplesmente não executa. Todo script vive em arquivo próprio,
+    servido do mesmo domínio: panda-boot.js.
+
+    O CSP é o que impede que texto vindo do banco (nome de prato, título de
+    promoção) vire script executado no navegador do sócio.
+  -->
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
@@ -31,64 +44,15 @@
 
   <title>PandaVip — Tio Panda</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="panda-splash.css">
 </head>
 <body>
-  <script>
-    // Demo: remove qualquer service worker antigo e limpa caches
-    // pra sempre carregar a versão mais recente do app.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function (rs) {
-        rs.forEach(function (r) { r.unregister(); });
-      });
-    }
-    if (window.caches) {
-      caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
-    }
-  </script>
-  <style>
-    #panda-splash{position:fixed;inset:0;display:flex;flex-direction:column;
-      align-items:center;justify-content:center;gap:20px;background:#F47A20;z-index:9999;
-      transition:opacity .4s ease}
-    #panda-splash img{width:120px;height:120px;border-radius:50%;
-      box-shadow:0 8px 30px rgba(0,0,0,.25)}
-    #panda-splash .t{color:#fff;font-family:sans-serif;font-weight:700;font-size:20px}
-    #panda-splash .s{width:34px;height:34px;border:3px solid rgba(255,255,255,.4);
-      border-top-color:#fff;border-radius:50%;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-  </style>
   <div id="panda-splash">
-    <img src="assets/assets/logo/panda_logo.png" alt="PandaVip"
-         onerror="this.style.display='none'"/>
+    <img id="panda-splash-logo" src="assets/assets/logo/panda_logo.png" alt="PandaVip"/>
     <div class="t">PandaVip</div>
     <div class="s"></div>
   </div>
-  <script>
-    // Remove o splash de forma robusta: no primeiro frame do Flutter, OU quando
-    // a <flutter-view> montar, OU por timeout de segurança. Assim o usuário
-    // nunca fica preso no splash mesmo se o evento não disparar.
-    (function () {
-      var removido = false;
-      function tirarSplash() {
-        if (removido) return;
-        removido = true;
-        var s = document.getElementById('panda-splash');
-        if (s) { s.style.opacity = '0'; setTimeout(function () { s.remove(); }, 400); }
-        if (obs) obs.disconnect();
-        clearInterval(poll);
-      }
-      window.addEventListener('flutter-first-frame', tirarSplash);
-      // Observa o DOM: assim que a view do Flutter aparecer, some o splash.
-      var obs = new MutationObserver(function () {
-        if (document.querySelector('flutter-view, flt-glass-pane')) tirarSplash();
-      });
-      obs.observe(document.body, { childList: true, subtree: true });
-      // Fallback por polling + timeout duro (nunca prende o usuário).
-      var poll = setInterval(function () {
-        if (document.querySelector('flutter-view, flt-glass-pane')) tirarSplash();
-      }, 300);
-      setTimeout(tirarSplash, 8000);
-    })();
-  </script>
+  <script src="panda-boot.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -5,9 +5,14 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import { db, messaging } from "./lib/admin";
 import { requireAdmin } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
 
 type Publico = "todos" | "assinantes";
 type Origem = "manual" | "promocao" | "premio";
+
+/** Tetos do texto de um aviso. Ver o corte em [sendPush]. */
+const MAX_TITULO = 120;
+const MAX_CORPO = 1000;
 
 interface Alvo {
   uid: string;
@@ -157,7 +162,8 @@ async function enviarAviso(opts: {
 
 /** Envia para todos ou só assinantes. Só admin. */
 export const sendPush = onCall(async (req) => {
-  requireAdmin(req);
+  const chamador = requireAdmin(req);
+  await consumir(chamador, "sendPush");
   const { titulo, corpo, onlySubscribers, imagem } = req.data as {
     titulo: string;
     corpo: string;
@@ -169,9 +175,17 @@ export const sendPush = onCall(async (req) => {
     return { ok: false, enviados: 0, erro: "Título e mensagem são obrigatórios." };
   }
 
+  // Corta no tamanho que o FCM mostra. O texto não vai só pro celular: uma
+  // cópia é gravada na central de CADA sócio (`gravarNaCentral`), então um
+  // corpo colado de 200 KB por engano vira 200 KB × base inteira de escrita —
+  // e nada disso apareceria na notificação, que o sistema trunca de qualquer
+  // jeito.
+  const tituloLimpo = titulo.trim().slice(0, MAX_TITULO);
+  const corpoLimpo = corpo.trim().slice(0, MAX_CORPO);
+
   const enviados = await enviarAviso({
-    titulo: titulo.trim(),
-    corpo: corpo.trim(),
+    titulo: tituloLimpo,
+    corpo: corpoLimpo,
     publico: onlySubscribers ? "assinantes" : "todos",
     origem: "manual",
     imagem,

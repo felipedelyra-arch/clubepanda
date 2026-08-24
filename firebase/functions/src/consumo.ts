@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { randomUUID } from "crypto";
 import { requireAdmin } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
 import { registrarConsumo, type ConsumoInput } from "./lib/consumo";
 
 /**
@@ -15,7 +16,8 @@ import { registrarConsumo, type ConsumoInput } from "./lib/consumo";
  * e continua fechado, mesmo pro admin.
  */
 export const lancarConsumo = onCall(async (req) => {
-  requireAdmin(req);
+  const chamador = requireAdmin(req);
+  await consumir(chamador, "lancarConsumo");
 
   const dados = req.data as ConsumoInput;
 

@@ -4,6 +4,7 @@ import { db } from "./lib/admin";
 import { FieldValue, FieldPath } from "firebase-admin/firestore";
 import { garantirCodigoSocio } from "./lib/codigoSocio";
 import { requireAdmin } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
 
 /**
  * Orçamento de tempo de [onAuthUserCreate], em milissegundos.
@@ -134,7 +135,8 @@ const BACKFILL_PARALELO = 10;
  * Quem chama repete enquanto `continua` for true, passando o `cursor` de volta.
  */
 export const backfillCodigosSocio = onCall(async (req) => {
-  requireAdmin(req);
+  const chamador = requireAdmin(req);
+  await consumir(chamador, "backfillCodigosSocio");
   const { cursor } = (req.data ?? {}) as { cursor?: string };
 
   // `codigoSocio` está AUSENTE em quem não tem (não é null), e o Firestore não

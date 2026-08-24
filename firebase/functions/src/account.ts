@@ -5,6 +5,7 @@ import { FieldValue, type Query } from "firebase-admin/firestore";
 import { db, auth, storage } from "./lib/admin";
 import { stripe } from "./lib/stripe";
 import { requireAuth } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
 
 /**
  * Exclusão de conta (LGPD + exigência das lojas).
@@ -141,6 +142,7 @@ export async function executarExclusao(uid: string): Promise<number> {
 /** O sócio pede a exclusão da própria conta. */
 export const deleteAccount = onCall(async (req) => {
   const uid = requireAuth(req);
+  await consumir(uid, "deleteAccount");
   const etapa = await executarExclusao(uid);
   return { ok: true, etapa, completo: etapa >= FINAL };
 });

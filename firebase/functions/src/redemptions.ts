@@ -4,6 +4,7 @@ import { logger } from "firebase-functions";
 import { db } from "./lib/admin";
 import { FieldValue } from "firebase-admin/firestore";
 import { requireAuth, requireAdmin } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
 import { reservarCupom, liberarCupom } from "./lib/cupons";
 
 /**
@@ -43,6 +44,7 @@ const novoCodigo = () => randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase
  */
 export const redeemReward = onCall(async (req) => {
   const uid = requireAuth(req);
+  await consumir(uid, "redeemReward");
   const { rewardId } = req.data as { rewardId?: string };
   if (!rewardId) throw new HttpsError("invalid-argument", "rewardId obrigatório.");
 
@@ -126,7 +128,8 @@ export const redeemReward = onCall(async (req) => {
 
 /** Admin valida um resgate (marca como usado). */
 export const validateRedemption = onCall(async (req) => {
-  requireAdmin(req);
+  const chamador = requireAdmin(req);
+  await consumir(chamador, "validateRedemption");
   const { codigo } = req.data as { codigo?: string };
   if (!codigo) throw new HttpsError("invalid-argument", "codigo obrigatório.");
 

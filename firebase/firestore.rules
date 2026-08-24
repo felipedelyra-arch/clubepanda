@@ -175,6 +175,16 @@ service cloud.firestore {
       allow read, write: if false; // apenas Cloud Functions
     }
 
+    // ---- rateLimits ----
+    // Contadores de chamada por sócio e por ação (functions/src/lib/rateLimit.ts).
+    // Fechado dos dois lados, e é o ponto todo: se o cliente pudesse escrever
+    // aqui, zerar o próprio contador seria a primeira coisa que quem está
+    // abusando faria — e o limite não limitaria nada. Ler também não: a
+    // contagem diz quanto ainda dá pra tentar antes de bater no teto.
+    match /rateLimits/{chave} {
+      allow read, write: if false; // apenas Cloud Functions
+    }
+
     // ---- notificationLogs ----
     // Histórico de avisos enviados, mostrado na tela de Notificações do painel.
     // Só admin lê; quem escreve é a function que dispara o aviso.

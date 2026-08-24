@@ -310,6 +310,19 @@ describe("outras coleções", () => {
     await assertFails(setDoc(doc(eu(), "exclusoes", UID), { etapa: 7 }));
   });
 
+  test("rateLimits é fechado — zerar o próprio contador não pode existir", async () => {
+    // O contador que limita chamada por sócio (functions/src/lib/rateLimit.ts).
+    // Se o cliente pudesse escrever aqui, apagar o documento seria a primeira
+    // coisa que quem está abusando faria, e o limite não limitaria nada. Ler
+    // também não: a contagem diz quanto ainda dá pra tentar antes do teto.
+    const chave = `${UID}__redeemReward__999`;
+    await semRegras((db) => setDoc(doc(db, "rateLimits", chave), { n: 30 }));
+    await assertFails(getDoc(doc(eu(), "rateLimits", chave)));
+    await assertFails(getDoc(doc(admin(), "rateLimits", chave)));
+    await assertFails(setDoc(doc(eu(), "rateLimits", chave), { n: 0 }));
+    await assertFails(updateDoc(doc(eu(), "rateLimits", chave), { n: 0 }));
+  });
+
   test("notificationLogs: só admin lê", async () => {
     await semRegras((db) => setDoc(doc(db, "notificationLogs", "l1"), { enviados: 5 }));
     await assertFails(getDoc(doc(eu(), "notificationLogs", "l1")));

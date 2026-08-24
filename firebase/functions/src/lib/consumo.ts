@@ -44,6 +44,27 @@ export type ResultadoConsumo =
   | { ok: true; ignorado: "comanda_desconhecida" | "socio_nao_identificado" }
   | { ok: false; erro: string };
 
+/**
+ * Tetos do que entra num documento de consumo.
+ *
+ * As duas portas daqui são autenticadas (HMAC no PDV, admin no painel), então
+ * isto não é a defesa principal — é o limite que impede um erro do outro lado
+ * de virar problema nosso. Sem teto, uma comanda com dez mil itens ou um nome
+ * de prato gigante estoura o limite de 1 MB por documento do Firestore: a
+ * gravação falha, o PDV recebe erro e fica reenviando a mesma conta pra sempre.
+ *
+ * Cortar o excesso é melhor que recusar: a conta em si — valor, sócio, mesa —
+ * continua registrada, que é o que decide desconto e extrato.
+ */
+const MAX_ITENS = 200;
+const MAX_TEXTO = 120;
+
+/** Corta [v] em [max] caracteres. `null` quando não sobra nada. */
+function texto(v: unknown, max = MAX_TEXTO): string | null {
+  const s = (v ?? "").toString().trim().slice(0, max);
+  return s || null;
+}
+
 /** Aceita 143.82, "143.82" e "143,82" — PDV manda dos três jeitos. */
 export function num(v: unknown): number {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
@@ -155,7 +176,10 @@ export async function registrarConsumo(
   input: ConsumoInput,
   origem: "pdv" | "manual"
 ): Promise<ResultadoConsumo> {
-  const comandaId = (input.comandaId ?? "").toString().trim();
+  // Cortado no mesmo tamanho que `idDaComanda` usa: assim o `gatewayRef`
+  // gravado é sempre o mesmo pedaço que virou a chave de idempotência, e não
+  // uma versão maior que dá a impressão de identificar outra comanda.
+  const comandaId = (input.comandaId ?? "").toString().trim().slice(0, 100);
   if (!comandaId) return { ok: false, erro: "comandaId obrigatório." };
 
   const ref = db.doc(`payments/${idDaComanda(comandaId)}`);
@@ -171,10 +195,11 @@ export async function registrarConsumo(
   const userId = await acharUsuario(input);
   if (!userId) return { ok: true, ignorado: "socio_nao_identificado" };
 
-  const itens = (input.itens ?? [])
+  const itens = (Array.isArray(input.itens) ? input.itens : [])
     .filter((i) => i && i.nome)
+    .slice(0, MAX_ITENS)
     .map((i) => ({
-      nome: String(i.nome),
+      nome: texto(i.nome) ?? "",
       quantidade: Math.max(1, Math.round(num(i.quantidade) || 1)),
       preco: num(i.preco),
     }));
@@ -195,8 +220,8 @@ export async function registrarConsumo(
     metodo: normalizarMetodo(input.metodo),
     status: "aprovado",
     tipo: "consumo" as const,
-    mesa: input.mesa != null && input.mesa !== "" ? String(input.mesa) : null,
-    atendente: input.atendente || null,
+    mesa: texto(input.mesa, 40),
+    atendente: texto(input.atendente),
     itens: itens.length ? itens : null,
     descontoClube,
     origem,

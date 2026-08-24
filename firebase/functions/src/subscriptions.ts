@@ -2,6 +2,24 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { db, auth } from "./lib/admin";
 import { stripe } from "./lib/stripe";
 import { requireAuth } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
+
+/**
+ * Para onde o Stripe manda a pessoa depois do checkout.
+ *
+ * ⚠️ Isto era `successUrl`/`cancelUrl` vindos do `req.data`, com estes valores
+ * só como padrão — e nenhuma tela mandava os campos, então o parâmetro era
+ * superfície aberta sem uso. Quem chamasse a função direto (basta uma conta
+ * qualquer e o SDK) recebia de volta uma URL de checkout **do domínio do
+ * Stripe, no comerciante PandaVip**, que ao terminar o pagamento jogava a
+ * pessoa num site escolhido por ele. É o material perfeito pra golpe: o link
+ * é legítimo até o último passo.
+ *
+ * Destino fixo no servidor fecha isso sem custo nenhum, porque o cliente nunca
+ * precisou escolher.
+ */
+const URL_SUCESSO = "https://pandavip.web.app/sucesso";
+const URL_CANCELAMENTO = "https://pandavip.web.app/planos";
 
 /**
  * Cria uma sessão de checkout Stripe para assinatura recorrente.
@@ -9,11 +27,8 @@ import { requireAuth } from "./lib/guards";
  */
 export const createCheckoutSession = onCall(async (req) => {
   const uid = requireAuth(req);
-  const { planId, successUrl, cancelUrl } = req.data as {
-    planId?: string;
-    successUrl?: string;
-    cancelUrl?: string;
-  };
+  await consumir(uid, "createCheckoutSession");
+  const { planId } = req.data as { planId?: string };
   if (!planId) throw new HttpsError("invalid-argument", "planId obrigatório.");
 
   const planSnap = await db.doc(`plans/${planId}`).get();
@@ -55,8 +70,8 @@ export const createCheckoutSession = onCall(async (req) => {
     mode: "subscription",
     customer: customerId,
     line_items: [{ price: plan.stripePriceId, quantity: 1 }],
-    success_url: successUrl ?? "https://pandavip.web.app/sucesso",
-    cancel_url: cancelUrl ?? "https://pandavip.web.app/planos",
+    success_url: URL_SUCESSO,
+    cancel_url: URL_CANCELAMENTO,
     metadata: { firebaseUid: uid, planId },
     subscription_data: { metadata: { firebaseUid: uid, planId } },
   });
@@ -67,6 +82,7 @@ export const createCheckoutSession = onCall(async (req) => {
 /** Cancela a assinatura ativa do usuário (ao fim do período). */
 export const cancelSubscription = onCall(async (req) => {
   const uid = requireAuth(req);
+  await consumir(uid, "cancelSubscription");
 
   const subs = await db
     .collection("subscriptions")

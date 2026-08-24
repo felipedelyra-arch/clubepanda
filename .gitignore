@@ -66,3 +66,6 @@ app/android/.kotlin/
 # app/build/web. O Hosting exige que a pasta publicada fique dentro do
 # diretório do firebase.json, e build não entra no versionamento.
 firebase/hosting/
+
+# Artefatos do Playwright (screenshots e logs de sessão de teste)
+.playwright-mcp/

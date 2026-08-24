@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./lib/admin";
 import { requireAuth } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
 
 /**
  * Indicação: cada sócio tem um código, e quem se cadastra usando esse código
@@ -130,6 +131,7 @@ export async function aplicarIndicacao(uid: string, code: string): Promise<Resul
  */
 export const ensureReferralCode = onCall(async (req) => {
   const uid = requireAuth(req);
+  await consumir(uid, "ensureReferralCode");
 
   let code: string;
   try {
@@ -153,6 +155,7 @@ export const ensureReferralCode = onCall(async (req) => {
  */
 export const applyReferral = onCall(async (req) => {
   const uid = requireAuth(req);
+  await consumir(uid, "applyReferral");
   const { code } = req.data as { code?: string };
   if (!code) throw new HttpsError("invalid-argument", "code obrigatório.");
 

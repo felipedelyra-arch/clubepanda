@@ -32,6 +32,9 @@ export {
 export { stripeWebhook } from "./webhooks/stripe";
 export { pixWebhook } from "./webhooks/pix";
 
+// Manutenção interna
+export { limparRateLimits } from "./manutencao";
+
 // Consumo no salão: automático (PDV) e manual (painel)
 export { pdvConsumo } from "./webhooks/pdv";
 export { lancarConsumo } from "./consumo";

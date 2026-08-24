@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { auth, db } from "./lib/admin";
 import { requireAdmin } from "./lib/guards";
+import { consumir } from "./lib/rateLimit";
 
 /**
  * Concede/revoga a role admin via custom claim.
@@ -8,7 +9,8 @@ import { requireAdmin } from "./lib/guards";
  * manualmente (ver README: firebase auth + setCustomUserClaims via script).
  */
 export const setAdminRole = onCall(async (req) => {
-  requireAdmin(req);
+  const chamador = requireAdmin(req);
+  await consumir(chamador, "setAdminRole");
 
   const { targetUid, makeAdmin } = req.data as {
     targetUid?: string;
