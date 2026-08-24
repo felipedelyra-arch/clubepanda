@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
@@ -17,6 +18,7 @@ import 'core/services/push_service.dart';
 import 'core/services/fila_pendentes.dart';
 import 'core/connectivity.dart';
 import 'core/version_gate.dart';
+import 'core/abertura.dart';
 import 'core/demo.dart';
 import 'core/app_prefs.dart';
 import 'core/ui_prefs.dart';
@@ -25,11 +27,25 @@ import 'core/widgets/splash_gate.dart';
 import 'router/app_router.dart';
 
 Future<void> main() async {
+  // Primeira linha: é daqui que o SplashGate conta o orçamento da camada
+  // laranja (ver core/abertura.dart).
+  marcarAbertura();
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('pt_BR', null);
 
-  // Carrega as preferências antes de rodar: permite leitura síncrona.
-  final prefs = await SharedPreferences.getInstance();
+  // ⚠️ Estas três esperas não dependem uma da outra, e antes rodavam **em
+  // fila**: dados de locale, depois preferências, depois Firebase. O sócio
+  // pagava a soma das três olhando pro laranja. Começam todas agora e são
+  // recolhidas no fim; o custo passa a ser o da mais lenta, não o do total.
+  final futuroData = initializeDateFormatting('pt_BR', null);
+  final futuroPrefs = SharedPreferences.getInstance();
+
+  // Decodifica a logo enquanto o resto sobe. Ela é o primeiro pixel que o
+  // Flutter pinta (SplashGate), e `Image.asset` resolve de forma assíncrona:
+  // sem este empurrão, o primeiro frame saía laranja **sem logo** e ela
+  // aparecia um ou dois frames depois — o pulo que fazia a abertura parecer
+  // travada bem no começo.
+  const AssetImage('assets/logo/panda_logo.png')
+      .resolve(ImageConfiguration.empty);
 
   // Modo demo: não inicializa Firebase, usa dados fictícios (overrides).
   if (!kDemo) {
@@ -63,14 +79,30 @@ Future<void> main() async {
     //
     // Web fica de fora de propósito: lá o provedor é reCAPTCHA, que exige uma
     // chave de site que ainda não foi criada. Sem ela, `activate` estoura.
+    //
+    // ⚠️ **Sem `await`.** Isto instala o provedor e conversa com o Play
+    // Integrity; nada na primeira tela depende do resultado, e esperar por ele
+    // era mais um passo de rede segurando o `runApp` — laranja parado enquanto
+    // o app conversava com o Google. O erro precisa ser engolido aqui: como
+    // ninguém espera esta Future, uma falha (aparelho sem Play Services,
+    // emulador) subiria como erro assíncrono não tratado e o
+    // `PlatformDispatcher.onError` logo abaixo a registraria como **fatal** no
+    // Crashlytics — um crash inventado por causa de um enfeite de segurança
+    // que nem está sendo imposto ainda.
     if (!kIsWeb) {
-      await FirebaseAppCheck.instance.activate(
-        providerAndroid: kReleaseMode
-            ? const AndroidPlayIntegrityProvider()
-            : const AndroidDebugProvider(),
-        providerApple: kReleaseMode
-            ? const AppleAppAttestProvider()
-            : const AppleDebugProvider(),
+      unawaited(
+        FirebaseAppCheck.instance
+            .activate(
+              providerAndroid: kReleaseMode
+                  ? const AndroidPlayIntegrityProvider()
+                  : const AndroidDebugProvider(),
+              providerApple: kReleaseMode
+                  ? const AppleAppAttestProvider()
+                  : const AppleDebugProvider(),
+            )
+            .catchError((Object e) {
+              debugPrint('[AppCheck] não ativou: $e');
+            }),
       );
     }
     // Crashlytics: captura erros de framework e assíncronos não tratados.
@@ -85,6 +117,11 @@ Future<void> main() async {
       };
     }
   }
+
+  // Recolhe o que foi disparado lá em cima. Na prática já terminaram: as duas
+  // rodaram durante a inicialização do Firebase.
+  await futuroData;
+  final prefs = await futuroPrefs;
 
   runApp(
     ProviderScope(
